@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "ClaudeBrew",
+    "slug": "claudebrew",
+    "version": "0.1.0",
+    "orientation": "portrait",
+"userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "backgroundColor": "#1C1410"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.claudebrew.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1C1410"
+      },
+      "package": "com.claudebrew.app"
+    }
+  }
+}

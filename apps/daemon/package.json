@@ -1,0 +1,22 @@
+{
+  "name": "cc-remote",
+  "version": "0.1.0",
+  "description": "ClaudeBrew — local WiFi companion for Claude Code",
+  "bin": {
+    "cc-remote": "./bin/cc-remote.js"
+  },
+  "scripts": {
+    "build": "tsc && mkdir -p dist/hooks && cp src/hooks/claudebrew-hook.py dist/hooks/",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "qrcode-terminal": "^0.12.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.0",
+    "typescript": "^5.7.0"
+  }
+}

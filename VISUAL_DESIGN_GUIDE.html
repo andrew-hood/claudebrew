@@ -1,0 +1,1909 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClaudeBrew — Design Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* ─── Core Palette: Warm Coffee + Claude Amber ─── */
+        --brew-dark: #1c1410;
+        --brew-rich: #2a1f17;
+        --brew-medium: #3d2e23;
+        --brew-surface: #4a382b;
+        --brew-muted: #6b5444;
+
+        /* Crema — warm highlights */
+        --crema-light: #f5e6d3;
+        --crema: #e8d5bc;
+        --crema-dark: #c4a882;
+
+        /* Claude amber accent */
+        --claude-amber: #d4943a;
+        --claude-gold: #e8aa4a;
+        --claude-light: #f0c87a;
+
+        /* Status colors */
+        --status-connected: #6bbf6a;
+        --status-waiting: #d4943a;
+        --status-offline: #c75b4a;
+        --status-working: #5ba4d9;
+
+        /* Semantic */
+        --text-primary: #f5e6d3;
+        --text-secondary: #c4a882;
+        --text-muted: #8a7460;
+        --text-inverse: #1c1410;
+
+        /* Spacing scale */
+        --space-xs: 4px;
+        --space-sm: 8px;
+        --space-md: 16px;
+        --space-lg: 24px;
+        --space-xl: 32px;
+        --space-2xl: 48px;
+        --space-3xl: 64px;
+
+        /* Radius */
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --radius-xl: 20px;
+        --radius-pill: 100px;
+
+        /* Shadows */
+        --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.3);
+        --shadow-medium: 0 4px 24px rgba(0, 0, 0, 0.4);
+        --shadow-glow: 0 0 20px rgba(212, 148, 58, 0.15);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "DM Sans", sans-serif;
+        background: var(--brew-dark);
+        color: var(--text-primary);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ─── Layout ─── */
+      .guide {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: var(--space-2xl) var(--space-lg);
+      }
+
+      section {
+        margin-bottom: var(--space-3xl);
+        padding-bottom: var(--space-3xl);
+        border-bottom: 1px solid var(--brew-surface);
+      }
+
+      section:last-child {
+        border-bottom: none;
+      }
+
+      /* ─── Header ─── */
+      .hero {
+        text-align: center;
+        padding: var(--space-3xl) 0;
+        position: relative;
+      }
+
+      .hero::before {
+        content: "";
+        position: absolute;
+        top: -40px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(
+          circle,
+          rgba(212, 148, 58, 0.08) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+      }
+
+      .logo-mark {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto var(--space-lg);
+        background: linear-gradient(
+          135deg,
+          var(--claude-amber),
+          var(--claude-gold)
+        );
+        border-radius: var(--radius-xl);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        box-shadow: var(--shadow-glow);
+        position: relative;
+      }
+
+      .logo-mark .steam {
+        position: absolute;
+        top: -12px;
+        font-size: 18px;
+        opacity: 0.7;
+        animation: steam 2s ease-in-out infinite;
+      }
+
+      @keyframes steam {
+        0%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.7;
+        }
+        50% {
+          transform: translateY(-6px);
+          opacity: 0.3;
+        }
+      }
+
+      .hero h1 {
+        font-family: "Fraunces", serif;
+        font-size: 48px;
+        font-weight: 700;
+        letter-spacing: -1px;
+        margin-bottom: var(--space-sm);
+      }
+
+      .hero h1 .accent {
+        color: var(--claude-amber);
+      }
+
+      .hero .tagline {
+        font-size: 18px;
+        color: var(--text-secondary);
+        font-weight: 300;
+      }
+
+      .hero .version-badge {
+        display: inline-block;
+        margin-top: var(--space-md);
+        padding: var(--space-xs) var(--space-md);
+        background: var(--brew-surface);
+        border-radius: var(--radius-pill);
+        font-size: 12px;
+        font-family: "JetBrains Mono", monospace;
+        color: var(--text-muted);
+      }
+
+      /* ─── Section Headers ─── */
+      .section-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: var(--claude-amber);
+        margin-bottom: var(--space-sm);
+      }
+
+      .section-title {
+        font-family: "Fraunces", serif;
+        font-size: 28px;
+        font-weight: 600;
+        margin-bottom: var(--space-xs);
+      }
+
+      .section-desc {
+        color: var(--text-secondary);
+        font-size: 15px;
+        margin-bottom: var(--space-xl);
+        max-width: 600px;
+      }
+
+      /* ─── Brand Identity ─── */
+      .brand-concepts {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-md);
+      }
+
+      .brand-card {
+        background: var(--brew-rich);
+        border: 1px solid var(--brew-surface);
+        border-radius: var(--radius-lg);
+        padding: var(--space-lg);
+      }
+
+      .brand-card .icon {
+        font-size: 28px;
+        margin-bottom: var(--space-md);
+      }
+
+      .brand-card h3 {
+        font-family: "Fraunces", serif;
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: var(--space-sm);
+      }
+
+      .brand-card p {
+        font-size: 14px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+      }
+
+      /* ─── Color Palette ─── */
+      .palette-group {
+        margin-bottom: var(--space-xl);
+      }
+
+      .palette-group-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: var(--space-md);
+      }
+
+      .palette-row {
+        display: flex;
+        gap: var(--space-sm);
+        flex-wrap: wrap;
+      }
+
+      .swatch {
+        width: 120px;
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        background: var(--brew-rich);
+        border: 1px solid var(--brew-surface);
+      }
+
+      .swatch-color {
+        height: 64px;
+        position: relative;
+      }
+
+      .swatch-info {
+        padding: var(--space-sm) var(--space-sm);
+      }
+
+      .swatch-name {
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 2px;
+      }
+
+      .swatch-hex {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      /* ─── Typography ─── */
+      .type-specimen {
+        background: var(--brew-rich);
+        border: 1px solid var(--brew-surface);
+        border-radius: var(--radius-lg);
+        padding: var(--space-xl);
+        margin-bottom: var(--space-md);
+      }
+
+      .type-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-lg);
+        padding-bottom: var(--space-md);
+        border-bottom: 1px solid var(--brew-surface);
+      }
+
+      .type-meta .name {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        color: var(--claude-amber);
+        font-weight: 500;
+      }
+
+      .type-meta .usage {
+        font-size: 12px;
+        color: var(--text-muted);
+        background: var(--brew-surface);
+        padding: 2px 10px;
+        border-radius: var(--radius-pill);
+      }
+
+      .type-display {
+        font-family: "Fraunces", serif;
+      }
+
+      .type-body {
+        font-family: "DM Sans", sans-serif;
+      }
+
+      .type-mono {
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      .type-sample-row {
+        margin-bottom: var(--space-md);
+      }
+
+      .type-sample-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .type-sample-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10px;
+        color: var(--text-muted);
+        margin-bottom: var(--space-xs);
+      }
+
+      /* ─── Components ─── */
+      .component-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-lg);
+      }
+
+      .component-card {
+        background: var(--brew-rich);
+        border: 1px solid var(--brew-surface);
+        border-radius: var(--radius-lg);
+        padding: var(--space-lg);
+      }
+
+      .component-card h4 {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--text-muted);
+        margin-bottom: var(--space-lg);
+      }
+
+      /* Status Pill */
+      .status-pills {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-sm);
+        padding: var(--space-xs) var(--space-md);
+        border-radius: var(--radius-pill);
+        font-size: 13px;
+        font-weight: 500;
+        width: fit-content;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+
+      .status-connected {
+        background: rgba(107, 191, 106, 0.12);
+        color: var(--status-connected);
+      }
+      .status-connected .status-dot {
+        background: var(--status-connected);
+        box-shadow: 0 0 6px var(--status-connected);
+      }
+
+      .status-waiting {
+        background: rgba(212, 148, 58, 0.12);
+        color: var(--status-waiting);
+      }
+      .status-waiting .status-dot {
+        background: var(--status-waiting);
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+
+      .status-offline {
+        background: rgba(199, 91, 74, 0.12);
+        color: var(--status-offline);
+      }
+      .status-offline .status-dot {
+        background: var(--status-offline);
+      }
+
+      .status-working {
+        background: rgba(91, 164, 217, 0.12);
+        color: var(--status-working);
+      }
+      .status-working .status-dot {
+        background: var(--status-working);
+        animation: pulse 1s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+
+      /* Buttons */
+      .button-row {
+        display: flex;
+        gap: var(--space-sm);
+        flex-wrap: wrap;
+        margin-bottom: var(--space-md);
+      }
+
+      .btn {
+        padding: var(--space-sm) var(--space-lg);
+        border-radius: var(--radius-md);
+        font-family: "DM Sans", sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-primary {
+        background: var(--claude-amber);
+        color: var(--text-inverse);
+      }
+
+      .btn-primary:hover {
+        background: var(--claude-gold);
+      }
+
+      .btn-secondary {
+        background: var(--brew-surface);
+        color: var(--text-primary);
+      }
+
+      .btn-secondary:hover {
+        background: var(--brew-muted);
+      }
+
+      .btn-quick {
+        background: var(--brew-medium);
+        color: var(--crema);
+        border: 1px solid var(--brew-surface);
+        padding: var(--space-sm) var(--space-md);
+        border-radius: var(--radius-sm);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+      }
+
+      .btn-quick:hover {
+        border-color: var(--claude-amber);
+        color: var(--claude-gold);
+      }
+
+      /* Message Bubbles */
+      .message-preview {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+      }
+
+      .msg {
+        max-width: 85%;
+        padding: var(--space-md);
+        border-radius: var(--radius-lg);
+        font-size: 14px;
+        line-height: 1.5;
+        position: relative;
+      }
+
+      .msg-claude {
+        background: var(--brew-medium);
+        border: 1px solid var(--brew-surface);
+        align-self: flex-start;
+        border-bottom-left-radius: var(--space-xs);
+      }
+
+      .msg-claude .msg-sender {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--claude-amber);
+        margin-bottom: var(--space-xs);
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      .msg-user {
+        background: var(--claude-amber);
+        color: var(--text-inverse);
+        align-self: flex-end;
+        border-bottom-right-radius: var(--space-xs);
+      }
+
+      .msg-time {
+        font-size: 10px;
+        color: var(--text-muted);
+        margin-top: var(--space-xs);
+      }
+
+      .msg-user .msg-time {
+        color: rgba(28, 20, 16, 0.5);
+      }
+
+      /* Input Bar */
+      .input-bar {
+        display: flex;
+        gap: var(--space-sm);
+        padding: var(--space-sm);
+        background: var(--brew-medium);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--brew-surface);
+        margin-top: var(--space-md);
+      }
+
+      .input-bar input {
+        flex: 1;
+        background: none;
+        border: none;
+        color: var(--text-primary);
+        font-family: "DM Sans", sans-serif;
+        font-size: 14px;
+        padding: var(--space-sm);
+        outline: none;
+      }
+
+      .input-bar input::placeholder {
+        color: var(--text-muted);
+      }
+
+      .input-bar .send-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-sm);
+        background: var(--claude-amber);
+        border: none;
+        color: var(--text-inverse);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        transition: background 0.2s;
+      }
+
+      .input-bar .send-btn:hover {
+        background: var(--claude-gold);
+      }
+
+      /* Output Tail */
+      .output-tail {
+        background: var(--brew-dark);
+        border: 1px solid var(--brew-surface);
+        border-radius: var(--radius-md);
+        padding: var(--space-md);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        line-height: 1.7;
+        color: var(--text-muted);
+        margin-bottom: var(--space-md);
+      }
+
+      .output-tail .line-success {
+        color: var(--status-connected);
+      }
+      .output-tail .line-info {
+        color: var(--status-working);
+      }
+      .output-tail .line-muted {
+        color: var(--text-muted);
+      }
+
+      /* ─── Phone Mockup ─── */
+      .phone-mockup-container {
+        display: flex;
+        gap: var(--space-xl);
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .phone-frame {
+        width: 300px;
+        background: var(--brew-dark);
+        border-radius: 36px;
+        border: 3px solid var(--brew-surface);
+        padding: var(--space-md);
+        box-shadow: var(--shadow-medium);
+        position: relative;
+      }
+
+      .phone-notch {
+        width: 100px;
+        height: 24px;
+        background: var(--brew-dark);
+        border-radius: 0 0 16px 16px;
+        margin: -16px auto var(--space-md);
+        border: 2px solid var(--brew-surface);
+        border-top: none;
+      }
+
+      .phone-screen {
+        background: var(--brew-rich);
+        border-radius: var(--radius-xl);
+        padding: var(--space-md);
+        min-height: 500px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .phone-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-md);
+        padding-bottom: var(--space-md);
+        border-bottom: 1px solid var(--brew-surface);
+      }
+
+      .phone-header .title {
+        font-family: "Fraunces", serif;
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .phone-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .phone-label {
+        text-align: center;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: var(--space-md);
+      }
+
+      /* ─── Icon Grid ─── */
+      .icon-grid {
+        display: flex;
+        gap: var(--space-lg);
+        flex-wrap: wrap;
+      }
+
+      .icon-demo {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-sm);
+      }
+
+      .icon-box {
+        width: 64px;
+        height: 64px;
+        border-radius: var(--radius-lg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        position: relative;
+      }
+
+      .icon-box.large {
+        width: 80px;
+        height: 80px;
+        border-radius: var(--radius-xl);
+        font-size: 36px;
+      }
+
+      .icon-box .steam-icon {
+        position: absolute;
+        top: -8px;
+        font-size: 14px;
+        opacity: 0.6;
+        animation: steam 2s ease-in-out infinite;
+      }
+
+      .icon-label {
+        font-size: 11px;
+        font-family: "JetBrains Mono", monospace;
+        color: var(--text-muted);
+      }
+
+      /* ─── Spacing & Grid Ref ─── */
+      .spacing-demo {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+      }
+
+      .spacing-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+      }
+
+      .spacing-bar {
+        height: 12px;
+        background: var(--claude-amber);
+        border-radius: 2px;
+        opacity: 0.6;
+      }
+
+      .spacing-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        color: var(--text-muted);
+        min-width: 80px;
+      }
+
+      /* ─── Do / Don't ─── */
+      .do-dont-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-lg);
+      }
+
+      .do-card,
+      .dont-card {
+        border-radius: var(--radius-lg);
+        padding: var(--space-lg);
+        border: 1px solid;
+      }
+
+      .do-card {
+        background: rgba(107, 191, 106, 0.05);
+        border-color: rgba(107, 191, 106, 0.2);
+      }
+
+      .dont-card {
+        background: rgba(199, 91, 74, 0.05);
+        border-color: rgba(199, 91, 74, 0.2);
+      }
+
+      .do-card h4 {
+        color: var(--status-connected);
+        margin-bottom: var(--space-md);
+        font-size: 14px;
+      }
+      .dont-card h4 {
+        color: var(--status-offline);
+        margin-bottom: var(--space-md);
+        font-size: 14px;
+      }
+
+      .do-card li,
+      .dont-card li {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: var(--space-sm);
+        list-style: none;
+        padding-left: 20px;
+        position: relative;
+      }
+
+      .do-card li::before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: var(--status-connected);
+      }
+      .dont-card li::before {
+        content: "✗";
+        position: absolute;
+        left: 0;
+        color: var(--status-offline);
+      }
+
+      /* ─── Responsive ─── */
+      @media (max-width: 768px) {
+        .brand-concepts,
+        .component-grid,
+        .do-dont-grid {
+          grid-template-columns: 1fr;
+        }
+        .hero h1 {
+          font-size: 36px;
+        }
+        .phone-mockup-container {
+          flex-direction: column;
+          align-items: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="guide">
+      <!-- ═══ HERO ═══ -->
+      <div class="hero">
+        <div class="logo-mark">
+          ☕
+          <span class="steam">✦</span>
+        </div>
+        <h1>Claude<span class="accent">Brew</span></h1>
+        <p class="tagline">Brewing answers while you brew coffee</p>
+        <span class="version-badge">Design Guide v1.0 — February 2026</span>
+      </div>
+
+      <!-- ═══ BRAND IDENTITY ═══ -->
+      <section>
+        <div class="section-label">01 — Brand</div>
+        <h2 class="section-title">Brand Identity</h2>
+        <p class="section-desc">
+          ClaudeBrew is warm, technical, and unhurried. It blends the craft of
+          coffee culture with the precision of developer tooling.
+        </p>
+
+        <div class="brand-concepts">
+          <div class="brand-card">
+            <div class="icon">☕</div>
+            <h3>Warmth</h3>
+            <p>
+              Coffee-inspired earth tones create a cozy, approachable feel. This
+              isn't a cold dev tool — it's your companion while you step away.
+            </p>
+          </div>
+          <div class="brand-card">
+            <div class="icon">✦</div>
+            <h3>Intelligence</h3>
+            <p>
+              The Claude sparkle integrated as rising steam — AI working in the
+              background while you take a break. Subtle, not flashy.
+            </p>
+          </div>
+          <div class="brand-card">
+            <div class="icon">⚡</div>
+            <h3>Simplicity</h3>
+            <p>
+              One screen, one purpose. No feature bloat. You get a question, you
+              send an answer. Like ordering coffee — no friction.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ APP ICON ═══ -->
+      <section>
+        <div class="section-label">02 — App Icon</div>
+        <h2 class="section-title">Icon & Mark</h2>
+        <p class="section-desc">
+          Coffee cup with a Claude sparkle as rising steam. Uses the amber
+          gradient on dark background for shelf presence.
+        </p>
+
+        <div class="icon-grid">
+          <div class="icon-demo">
+            <div
+              class="icon-box large"
+              style="
+                background: linear-gradient(
+                  135deg,
+                  var(--claude-amber),
+                  var(--claude-gold)
+                );
+              "
+            >
+              ☕
+              <span class="steam-icon">✦</span>
+            </div>
+            <span class="icon-label">App Icon — 1024px</span>
+          </div>
+          <div class="icon-demo">
+            <div
+              class="icon-box"
+              style="
+                background: linear-gradient(
+                  135deg,
+                  var(--claude-amber),
+                  var(--claude-gold)
+                );
+              "
+            >
+              ☕
+              <span class="steam-icon" style="font-size: 11px; top: -6px"
+                >✦</span
+              >
+            </div>
+            <span class="icon-label">Home Screen</span>
+          </div>
+          <div class="icon-demo">
+            <div
+              class="icon-box"
+              style="
+                background: var(--brew-rich);
+                border: 1px solid var(--brew-surface);
+              "
+            >
+              ☕
+              <span
+                class="steam-icon"
+                style="font-size: 11px; top: -6px; color: var(--claude-amber)"
+                >✦</span
+              >
+            </div>
+            <span class="icon-label">Dark Variant</span>
+          </div>
+          <div class="icon-demo">
+            <div class="icon-box" style="background: var(--crema-light)">
+              <span style="filter: saturate(0.8)">☕</span>
+              <span
+                class="steam-icon"
+                style="font-size: 11px; top: -6px; color: var(--brew-rich)"
+                >✦</span
+              >
+            </div>
+            <span class="icon-label">Light Variant</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ COLOR PALETTE ═══ -->
+      <section>
+        <div class="section-label">03 — Color</div>
+        <h2 class="section-title">Color Palette</h2>
+        <p class="section-desc">
+          Rooted in coffee — dark roasts for backgrounds, crema for text, and
+          Claude's amber for accents and actions.
+        </p>
+
+        <div class="palette-group">
+          <div class="palette-group-label">Brew — Backgrounds & Surfaces</div>
+          <div class="palette-row">
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style="background: var(--brew-dark)"
+              ></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Brew Dark</div>
+                <div class="swatch-hex">#1C1410</div>
+              </div>
+            </div>
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style="background: var(--brew-rich)"
+              ></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Brew Rich</div>
+                <div class="swatch-hex">#2A1F17</div>
+              </div>
+            </div>
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style="background: var(--brew-medium)"
+              ></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Brew Medium</div>
+                <div class="swatch-hex">#3D2E23</div>
+              </div>
+            </div>
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style="background: var(--brew-surface)"
+              ></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Brew Surface</div>
+                <div class="swatch-hex">#4A382B</div>
+              </div>
+            </div>
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style="background: var(--brew-muted)"
+              ></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Brew Muted</div>
+                <div class="swatch-hex">#6B5444</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="palette-group">
+          <div class="palette-group-label">Crema — Text & Highlights</div>
+          <div class="palette-row">
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style="background: var(--crema-light)"
+              ></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Crema Light</div>
+                <div class="swatch-hex">#F5E6D3</div>
+              </div>
+            </div>
+            <div class="swatch">
+              <div class="swatch-color" style="background: var(--crema)"></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Crema</div>
+                <div class="swatch-hex">#E8D5BC</div>
+              </div>
+            </div>
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style="background: var(--crema-dark)"
+              ></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Crema Dark</div>
+                <div class="swatch-hex">#C4A882</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="palette-group">
+          <div class="palette-group-label">Claude — Accent & Actions</div>
+          <div class="palette-row">
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style="background: var(--claude-amber)"
+              ></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Claude Amber</div>
+                <div class="swatch-hex">#D4943A</div>
+              </div>
+            </div>
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style="background: var(--claude-gold)"
+              ></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Claude Gold</div>
+                <div class="swatch-hex">#E8AA4A</div>
+              </div>
+            </div>
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style="background: var(--claude-light)"
+              ></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Claude Light</div>
+                <div class="swatch-hex">#F0C87A</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="palette-group">
+          <div class="palette-group-label">Status</div>
+          <div class="palette-row">
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style="background: var(--status-connected)"
+              ></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Connected</div>
+                <div class="swatch-hex">#6BBF6A</div>
+              </div>
+            </div>
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style="background: var(--status-waiting)"
+              ></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Waiting</div>
+                <div class="swatch-hex">#D4943A</div>
+              </div>
+            </div>
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style="background: var(--status-working)"
+              ></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Working</div>
+                <div class="swatch-hex">#5BA4D9</div>
+              </div>
+            </div>
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style="background: var(--status-offline)"
+              ></div>
+              <div class="swatch-info">
+                <div class="swatch-name">Offline</div>
+                <div class="swatch-hex">#C75B4A</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ TYPOGRAPHY ═══ -->
+      <section>
+        <div class="section-label">04 — Typography</div>
+        <h2 class="section-title">Type System</h2>
+        <p class="section-desc">
+          Three fonts with clear roles: Fraunces for personality, DM Sans for
+          readability, JetBrains Mono for code and metadata.
+        </p>
+
+        <div class="type-specimen">
+          <div class="type-meta">
+            <span class="name">Fraunces — Display</span>
+            <span class="usage">Headings, brand, titles</span>
+          </div>
+          <div class="type-sample-row">
+            <div class="type-sample-label">700 / 28px</div>
+            <div class="type-display" style="font-size: 28px; font-weight: 700">
+              ClaudeBrew
+            </div>
+          </div>
+          <div class="type-sample-row">
+            <div class="type-sample-label">600 / 20px</div>
+            <div class="type-display" style="font-size: 20px; font-weight: 600">
+              Claude is asking a question
+            </div>
+          </div>
+          <div class="type-sample-row">
+            <div class="type-sample-label">400 / 16px — italic</div>
+            <div
+              class="type-display"
+              style="
+                font-size: 16px;
+                font-weight: 400;
+                font-style: italic;
+                color: var(--text-secondary);
+              "
+            >
+              Brewing answers while you brew coffee
+            </div>
+          </div>
+        </div>
+
+        <div class="type-specimen">
+          <div class="type-meta">
+            <span class="name">DM Sans — Body</span>
+            <span class="usage">Messages, UI text, descriptions</span>
+          </div>
+          <div class="type-sample-row">
+            <div class="type-sample-label">600 / 16px</div>
+            <div class="type-body" style="font-size: 16px; font-weight: 600">
+              Should I also update the API tests?
+            </div>
+          </div>
+          <div class="type-sample-row">
+            <div class="type-sample-label">400 / 14px</div>
+            <div class="type-body" style="font-size: 14px; font-weight: 400">
+              I noticed the auth module has some issues. There are two
+              approaches to fix this.
+            </div>
+          </div>
+          <div class="type-sample-row">
+            <div class="type-sample-label">300 / 13px</div>
+            <div
+              class="type-body"
+              style="
+                font-size: 13px;
+                font-weight: 300;
+                color: var(--text-secondary);
+              "
+            >
+              Connected via 192.168.1.42:3033
+            </div>
+          </div>
+        </div>
+
+        <div class="type-specimen">
+          <div class="type-meta">
+            <span class="name">JetBrains Mono — Code & Meta</span>
+            <span class="usage">Code output, timestamps, labels, terminal</span>
+          </div>
+          <div class="type-sample-row">
+            <div class="type-sample-label">500 / 13px</div>
+            <div class="type-mono" style="font-size: 13px; font-weight: 500">
+              Updated src/auth/oauth.ts
+            </div>
+          </div>
+          <div class="type-sample-row">
+            <div class="type-sample-label">400 / 12px</div>
+            <div
+              class="type-mono"
+              style="
+                font-size: 12px;
+                font-weight: 400;
+                color: var(--text-muted);
+              "
+            >
+              Running tests... 14/14 passed ✓
+            </div>
+          </div>
+          <div class="type-sample-row">
+            <div class="type-sample-label">400 / 10px — labels</div>
+            <div
+              class="type-mono"
+              style="
+                font-size: 10px;
+                font-weight: 400;
+                color: var(--text-muted);
+                text-transform: uppercase;
+                letter-spacing: 1.5px;
+              "
+            >
+              10:31 AM · HIGH CONFIDENCE
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ COMPONENTS ═══ -->
+      <section>
+        <div class="section-label">05 — Components</div>
+        <h2 class="section-title">UI Components</h2>
+        <p class="section-desc">
+          Reusable building blocks for the ClaudeBrew interface.
+        </p>
+
+        <div class="component-grid">
+          <!-- Status Pills -->
+          <div class="component-card">
+            <h4>Status Indicators</h4>
+            <div class="status-pills">
+              <div class="status-pill status-connected">
+                <span class="status-dot"></span> Connected
+              </div>
+              <div class="status-pill status-waiting">
+                <span class="status-dot"></span> Waiting for answer
+              </div>
+              <div class="status-pill status-working">
+                <span class="status-dot"></span> Claude is working
+              </div>
+              <div class="status-pill status-offline">
+                <span class="status-dot"></span> Disconnected
+              </div>
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="component-card">
+            <h4>Buttons</h4>
+            <div class="button-row">
+              <button class="btn btn-primary">Connect</button>
+              <button class="btn btn-secondary">Scan QR</button>
+            </div>
+            <div class="button-row">
+              <button class="btn-quick">Y</button>
+              <button class="btn-quick">n</button>
+              <button class="btn-quick">1</button>
+              <button class="btn-quick">2</button>
+              <button class="btn-quick">3</button>
+            </div>
+            <div
+              style="
+                font-size: 11px;
+                color: var(--text-muted);
+                margin-top: var(--space-sm);
+                font-family: &quot;JetBrains Mono&quot;, monospace;
+              "
+            >
+              Quick replies — auto-detected from prompt
+            </div>
+          </div>
+
+          <!-- Message Bubbles -->
+          <div class="component-card">
+            <h4>Message Bubbles</h4>
+            <div class="message-preview">
+              <div class="msg msg-claude">
+                <div class="msg-sender">✦ Claude Code</div>
+                Should I update the tests to match the new schema? (Y/n)
+                <div class="msg-time">10:31 AM</div>
+              </div>
+              <div class="msg msg-user">
+                Y — and add coverage for edge cases too
+                <div class="msg-time">10:32 AM</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Output Tail -->
+          <div class="component-card">
+            <h4>Terminal Output</h4>
+            <div class="output-tail">
+              <div class="line-muted">Analyzing project structure...</div>
+              <div class="line-info">Found 12 files in src/</div>
+              <div class="line-muted">Refactoring auth module...</div>
+              <div class="line-success">Updated src/auth/oauth.ts ✓</div>
+              <div class="line-success">Updated src/auth/tokens.ts ✓</div>
+              <div class="line-success">All 14 tests passing ✓</div>
+            </div>
+          </div>
+
+          <!-- Input Bar -->
+          <div class="component-card" style="grid-column: 1 / -1">
+            <h4>Input Bar</h4>
+            <div class="input-bar">
+              <input type="text" placeholder="Type your response..." disabled />
+              <button class="send-btn">▶</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ SCREEN MOCKUPS ═══ -->
+      <section>
+        <div class="section-label">06 — Screens</div>
+        <h2 class="section-title">Screen Mockups</h2>
+        <p class="section-desc">
+          The three key screens of ClaudeBrew — connect, monitor, and respond.
+        </p>
+
+        <div class="phone-mockup-container">
+          <!-- Screen 1: Connect -->
+          <div>
+            <div class="phone-frame">
+              <div class="phone-notch"></div>
+              <div class="phone-screen">
+                <div
+                  style="
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    text-align: center;
+                  "
+                >
+                  <div
+                    class="logo-mark"
+                    style="
+                      width: 56px;
+                      height: 56px;
+                      font-size: 24px;
+                      margin-bottom: var(--space-lg);
+                    "
+                  >
+                    ☕
+                    <span class="steam" style="font-size: 14px; top: -8px"
+                      >✦</span
+                    >
+                  </div>
+                  <div
+                    style="
+                      font-family: &quot;Fraunces&quot;, serif;
+                      font-size: 22px;
+                      font-weight: 700;
+                      margin-bottom: 4px;
+                    "
+                  >
+                    Claude<span style="color: var(--claude-amber)">Brew</span>
+                  </div>
+                  <div
+                    style="
+                      font-size: 13px;
+                      color: var(--text-muted);
+                      margin-bottom: var(--space-xl);
+                    "
+                  >
+                    Connect to your Mac
+                  </div>
+
+                  <div
+                    style="
+                      width: 140px;
+                      height: 140px;
+                      background: var(--brew-dark);
+                      border: 2px dashed var(--brew-surface);
+                      border-radius: var(--radius-lg);
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      margin-bottom: var(--space-lg);
+                    "
+                  >
+                    <div style="font-size: 32px; opacity: 0.3">📷</div>
+                  </div>
+                  <div
+                    style="
+                      font-size: 12px;
+                      color: var(--text-muted);
+                      margin-bottom: var(--space-xl);
+                    "
+                  >
+                    Scan QR code from terminal
+                  </div>
+
+                  <div
+                    style="
+                      font-size: 12px;
+                      color: var(--text-muted);
+                      margin-bottom: var(--space-sm);
+                    "
+                  >
+                    or enter manually
+                  </div>
+                  <div class="input-bar" style="width: 100%">
+                    <input
+                      type="text"
+                      placeholder="192.168.1.42:3033"
+                      disabled
+                      style="
+                        font-family: &quot;JetBrains Mono&quot;, monospace;
+                        font-size: 13px;
+                      "
+                    />
+                  </div>
+                  <div style="margin-top: var(--space-md); width: 100%">
+                    <button class="btn btn-primary" style="width: 100%">
+                      Connect
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="phone-label">Connect</div>
+          </div>
+
+          <!-- Screen 2: Active Session -->
+          <div>
+            <div class="phone-frame">
+              <div class="phone-notch"></div>
+              <div class="phone-screen">
+                <div class="phone-header">
+                  <span class="title"
+                    >Claude<span style="color: var(--claude-amber)"
+                      >Brew</span
+                    ></span
+                  >
+                  <div
+                    class="status-pill status-waiting"
+                    style="font-size: 11px; padding: 2px 10px"
+                  >
+                    <span
+                      class="status-dot"
+                      style="width: 6px; height: 6px"
+                    ></span>
+                    Waiting
+                  </div>
+                </div>
+                <div class="phone-content">
+                  <div
+                    class="output-tail"
+                    style="
+                      font-size: 11px;
+                      line-height: 1.6;
+                      margin-bottom: var(--space-md);
+                      flex-shrink: 0;
+                    "
+                  >
+                    <div class="line-muted">Refactoring auth module...</div>
+                    <div class="line-success">Updated src/auth/oauth.ts ✓</div>
+                    <div class="line-success">Updated 3 files ✓</div>
+                  </div>
+
+                  <div class="message-preview" style="flex: 1">
+                    <div
+                      class="msg msg-claude"
+                      style="font-size: 13px; padding: 12px"
+                    >
+                      <div class="msg-sender" style="font-size: 10px">
+                        ✦ Claude Code
+                      </div>
+                      Should I also update the API tests to match the new
+                      schema?
+                      <div class="msg-time" style="font-size: 9px">
+                        10:31 AM
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    style="
+                      display: flex;
+                      gap: 6px;
+                      margin-bottom: var(--space-sm);
+                      margin-top: var(--space-md);
+                    "
+                  >
+                    <button
+                      class="btn-quick"
+                      style="font-size: 12px; padding: 6px 16px; flex: 1"
+                    >
+                      Y
+                    </button>
+                    <button
+                      class="btn-quick"
+                      style="font-size: 12px; padding: 6px 16px; flex: 1"
+                    >
+                      n
+                    </button>
+                  </div>
+
+                  <div class="input-bar" style="padding: 6px">
+                    <input
+                      type="text"
+                      placeholder="Custom response..."
+                      disabled
+                      style="font-size: 13px; padding: 6px"
+                    />
+                    <button
+                      class="send-btn"
+                      style="width: 32px; height: 32px; font-size: 14px"
+                    >
+                      ▶
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="phone-label">Question</div>
+          </div>
+
+          <!-- Screen 3: Working -->
+          <div>
+            <div class="phone-frame">
+              <div class="phone-notch"></div>
+              <div class="phone-screen">
+                <div class="phone-header">
+                  <span class="title"
+                    >Claude<span style="color: var(--claude-amber)"
+                      >Brew</span
+                    ></span
+                  >
+                  <div
+                    class="status-pill status-working"
+                    style="font-size: 11px; padding: 2px 10px"
+                  >
+                    <span
+                      class="status-dot"
+                      style="width: 6px; height: 6px"
+                    ></span>
+                    Working
+                  </div>
+                </div>
+                <div class="phone-content">
+                  <div
+                    class="output-tail"
+                    style="font-size: 11px; line-height: 1.6; flex: 1"
+                  >
+                    <div class="line-muted">Refactoring auth module...</div>
+                    <div class="line-success">Updated src/auth/oauth.ts ✓</div>
+                    <div class="line-success">Updated 3 files ✓</div>
+                    <div class="line-muted" style="margin-top: 8px">
+                      Updating API tests...
+                    </div>
+                    <div class="line-success">Updated tests/auth.test.ts ✓</div>
+                    <div class="line-success">
+                      Updated tests/middleware.test.ts ✓
+                    </div>
+                    <div class="line-info">Running test suite...</div>
+                    <div class="line-success" style="margin-top: 4px">
+                      All 14 tests passing ✓
+                    </div>
+                    <div class="line-muted" style="margin-top: 8px">
+                      Checking for linting issues...
+                    </div>
+                    <div class="line-success">No lint errors found ✓</div>
+                  </div>
+
+                  <div style="text-align: center; padding: var(--space-md) 0">
+                    <div
+                      style="font-size: 24px; margin-bottom: var(--space-sm)"
+                    >
+                      ☕
+                    </div>
+                    <div
+                      style="
+                        font-size: 13px;
+                        color: var(--text-muted);
+                        font-style: italic;
+                        font-family: &quot;Fraunces&quot;, serif;
+                      "
+                    >
+                      Claude is working... enjoy your coffee
+                    </div>
+                  </div>
+
+                  <div class="input-bar" style="padding: 6px; opacity: 0.5">
+                    <input
+                      type="text"
+                      placeholder="No question pending"
+                      disabled
+                      style="font-size: 13px; padding: 6px"
+                    />
+                    <button
+                      class="send-btn"
+                      style="
+                        width: 32px;
+                        height: 32px;
+                        font-size: 14px;
+                        opacity: 0.5;
+                      "
+                    >
+                      ▶
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="phone-label">Working</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ SPACING ═══ -->
+      <section>
+        <div class="section-label">07 — Spacing</div>
+        <h2 class="section-title">Spacing Scale</h2>
+        <p class="section-desc">Consistent 8px base grid with named tokens.</p>
+
+        <div class="spacing-demo">
+          <div class="spacing-item">
+            <span class="spacing-label">xs — 4px</span>
+            <div class="spacing-bar" style="width: 4px"></div>
+          </div>
+          <div class="spacing-item">
+            <span class="spacing-label">sm — 8px</span>
+            <div class="spacing-bar" style="width: 8px"></div>
+          </div>
+          <div class="spacing-item">
+            <span class="spacing-label">md — 16px</span>
+            <div class="spacing-bar" style="width: 16px"></div>
+          </div>
+          <div class="spacing-item">
+            <span class="spacing-label">lg — 24px</span>
+            <div class="spacing-bar" style="width: 24px"></div>
+          </div>
+          <div class="spacing-item">
+            <span class="spacing-label">xl — 32px</span>
+            <div class="spacing-bar" style="width: 32px"></div>
+          </div>
+          <div class="spacing-item">
+            <span class="spacing-label">2xl — 48px</span>
+            <div class="spacing-bar" style="width: 48px"></div>
+          </div>
+          <div class="spacing-item">
+            <span class="spacing-label">3xl — 64px</span>
+            <div class="spacing-bar" style="width: 64px"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ DESIGN PRINCIPLES ═══ -->
+      <section>
+        <div class="section-label">08 — Principles</div>
+        <h2 class="section-title">Design Do's & Don'ts</h2>
+        <p class="section-desc">
+          Guidelines for maintaining the ClaudeBrew aesthetic.
+        </p>
+
+        <div class="do-dont-grid">
+          <div class="do-card">
+            <h4>✓ Do</h4>
+            <ul>
+              <li>Use warm, coffee-toned backgrounds</li>
+              <li>Keep the interface minimal — one purpose per screen</li>
+              <li>Use Claude Amber for primary actions and accents</li>
+              <li>Show terminal output in JetBrains Mono</li>
+              <li>Use Fraunces for brand moments and headings</li>
+              <li>Animate status indicators (pulsing dots)</li>
+              <li>Auto-detect quick replies from prompts</li>
+              <li>Show the "enjoy your coffee" idle state</li>
+              <li>Use generous padding inside message bubbles</li>
+              <li>Keep the QR scan flow dead simple</li>
+            </ul>
+          </div>
+          <div class="dont-card">
+            <h4>✗ Don't</h4>
+            <ul>
+              <li>Use cold blues or grays as primary backgrounds</li>
+              <li>Add features that don't serve the core Q&A flow</li>
+              <li>Use generic system fonts (Inter, SF Pro, Roboto)</li>
+              <li>Show raw JSON or technical errors to the user</li>
+              <li>Use purple gradients or typical "AI" aesthetics</li>
+              <li>Overwhelm with animations — keep them subtle</li>
+              <li>Force users to configure anything upfront</li>
+              <li>Make the input bar prominent when there's no question</li>
+              <li>Use bright white anywhere — warmest light is Crema</li>
+              <li>Break the coffee metaphor with tech-bro language</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ MOTION ═══ -->
+      <section style="border-bottom: none">
+        <div class="section-label">09 — Motion</div>
+        <h2 class="section-title">Animation Guidelines</h2>
+        <p class="section-desc">
+          Subtle, purposeful motion that reinforces the warm, unhurried feel.
+        </p>
+
+        <div class="component-grid">
+          <div class="component-card">
+            <h4>Timing</h4>
+            <div
+              style="
+                font-size: 14px;
+                color: var(--text-secondary);
+                line-height: 1.6;
+              "
+            >
+              <div style="margin-bottom: 12px">
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    color: var(--claude-amber);
+                    font-size: 12px;
+                  "
+                  >200ms</span
+                >
+                — Button presses, quick interactions
+              </div>
+              <div style="margin-bottom: 12px">
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    color: var(--claude-amber);
+                    font-size: 12px;
+                  "
+                  >300ms</span
+                >
+                — Screen transitions, message appearance
+              </div>
+              <div style="margin-bottom: 12px">
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    color: var(--claude-amber);
+                    font-size: 12px;
+                  "
+                  >1.5s</span
+                >
+                — Status dot pulse (waiting state)
+              </div>
+              <div>
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    color: var(--claude-amber);
+                    font-size: 12px;
+                  "
+                  >2.0s</span
+                >
+                — Steam rising animation (logo/idle)
+              </div>
+            </div>
+          </div>
+          <div class="component-card">
+            <h4>Easing</h4>
+            <div
+              style="
+                font-size: 14px;
+                color: var(--text-secondary);
+                line-height: 1.6;
+              "
+            >
+              <div style="margin-bottom: 12px">
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    color: var(--claude-amber);
+                    font-size: 12px;
+                  "
+                  >ease-out</span
+                >
+                — Elements entering the screen
+              </div>
+              <div style="margin-bottom: 12px">
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    color: var(--claude-amber);
+                    font-size: 12px;
+                  "
+                  >ease-in</span
+                >
+                — Elements leaving the screen
+              </div>
+              <div style="margin-bottom: 12px">
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    color: var(--claude-amber);
+                    font-size: 12px;
+                  "
+                  >ease-in-out</span
+                >
+                — Looping animations (pulse, steam)
+              </div>
+              <div>
+                <span
+                  style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    color: var(--claude-amber);
+                    font-size: 12px;
+                  "
+                  >spring(0.5)</span
+                >
+                — Message bubble pop-in
+              </div>
+            </div>
+          </div>
+          <div class="component-card" style="grid-column: 1 / -1">
+            <h4>Key Moments</h4>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: var(--space-lg);
+                text-align: center;
+              "
+            >
+              <div>
+                <div style="font-size: 32px; margin-bottom: var(--space-sm)">
+                  📱↔️💻
+                </div>
+                <div
+                  style="font-size: 13px; font-weight: 600; margin-bottom: 4px"
+                >
+                  Connection
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted)">
+                  Smooth fade + status pill color transition
+                </div>
+              </div>
+              <div>
+                <div style="font-size: 32px; margin-bottom: var(--space-sm)">
+                  💬
+                </div>
+                <div
+                  style="font-size: 13px; font-weight: 600; margin-bottom: 4px"
+                >
+                  New Question
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted)">
+                  Slide up + spring bounce from bottom
+                </div>
+              </div>
+              <div>
+                <div style="font-size: 32px; margin-bottom: var(--space-sm)">
+                  ✨
+                </div>
+                <div
+                  style="font-size: 13px; font-weight: 600; margin-bottom: 4px"
+                >
+                  Answer Sent
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted)">
+                  Bubble slides right + subtle glow
+                </div>
+              </div>
+              <div>
+                <div style="font-size: 32px; margin-bottom: var(--space-sm)">
+                  ☕
+                </div>
+                <div
+                  style="font-size: 13px; font-weight: 600; margin-bottom: 4px"
+                >
+                  Idle / Working
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted)">
+                  Gentle steam rise + soft breathing
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

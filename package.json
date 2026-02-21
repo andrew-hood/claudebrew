@@ -1,0 +1,5 @@
+{
+  "name": "claudebrew",
+  "private": true,
+  "workspaces": ["apps/*"]
+}

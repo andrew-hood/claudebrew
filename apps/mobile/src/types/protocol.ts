@@ -1,0 +1,49 @@
+export interface OutputMessage {
+  type: 'output';
+  text: string;
+}
+
+export interface StatusMessage {
+  type: 'status';
+  state: 'working' | 'waiting' | 'done';
+}
+
+export interface PairMessage {
+  type: 'pair';
+  pin: string;
+}
+
+export interface PairOkMessage {
+  type: 'pair_ok';
+}
+
+export interface HookEventMessage {
+  type: 'hook_event';
+  event: string;
+  sessionId: string;
+  tool?: string;
+  toolInput?: Record<string, unknown>;
+  toolUseId?: string;
+  cwd?: string;
+  notificationType?: string;
+  status?: string;
+}
+
+export interface PermissionRequestMessage {
+  type: 'permission_request';
+  sessionId: string;
+  toolUseId: string;
+  tool: string;
+  toolInput: Record<string, unknown>;
+}
+
+export interface PermissionResponseMessage {
+  type: 'permission_response';
+  sessionId: string;
+  toolUseId: string;
+  decision: 'allow' | 'deny';
+  reason?: string;
+}
+
+export type ServerMessage = OutputMessage | StatusMessage | PairOkMessage | HookEventMessage | PermissionRequestMessage;
+export type ClientMessage = PairMessage | PermissionResponseMessage;

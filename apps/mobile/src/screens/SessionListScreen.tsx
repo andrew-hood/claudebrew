@@ -34,7 +34,8 @@ export function SessionListScreen({
   onDisconnect,
   onPermissionResponse,
 }: Props) {
-  const pendingCount = sessions.filter((s) => s.pendingPermission).length;
+  const pendingSessions = sessions.filter((s) => s.pendingPermission);
+  const otherSessions = sessions.filter((s) => !s.pendingPermission);
 
   return (
     <View style={styles.container}>
@@ -57,20 +58,6 @@ export function SessionListScreen({
         </View>
       </View>
 
-      {/* Pending permissions banner */}
-      {pendingCount > 0 && (
-        <View
-          style={styles.pendingBanner}
-          accessibilityRole="alert"
-          accessibilityLabel={`${pendingCount} permission ${pendingCount === 1 ? "request" : "requests"} waiting`}
-        >
-          <View style={styles.pendingBannerDot} />
-          <Text style={styles.pendingBannerText}>
-            {pendingCount} {pendingCount === 1 ? "permission request" : "permission requests"} waiting
-          </Text>
-        </View>
-      )}
-
       {sessions.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyIcon} accessibilityElementsHidden>
@@ -85,21 +72,35 @@ export function SessionListScreen({
           style={styles.list}
           contentContainerStyle={styles.listContent}
         >
-          {sessions.map((session) => (
-            <SessionCard
+          {pendingSessions.map((session) => (
+            <ActionCard
               key={session.sessionId}
               session={session}
               onPress={() => onSelectSession(session.sessionId)}
               onPermissionResponse={onPermissionResponse}
             />
           ))}
+          {otherSessions.length > 0 && (
+            <View style={styles.compactSection}>
+              {pendingSessions.length > 0 && (
+                <Text style={styles.sectionLabel}>Active Sessions</Text>
+              )}
+              {otherSessions.map((session) => (
+                <CompactRow
+                  key={session.sessionId}
+                  session={session}
+                  onPress={() => onSelectSession(session.sessionId)}
+                />
+              ))}
+            </View>
+          )}
         </ScrollView>
       )}
     </View>
   );
 }
 
-function SessionCard({
+function ActionCard({
   session,
   onPress,
   onPermissionResponse,
@@ -112,97 +113,57 @@ function SessionCard({
     decision: "allow" | "deny",
   ) => void;
 }) {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
   const translateX = useRef(new Animated.Value(0)).current;
   const hasTriggeredHaptic = useRef(false);
+  const perm = session.pendingPermission!;
 
-  const hasPending = !!session.pendingPermission;
-  const statusColor = hasPending
-    ? colors.waiting
-    : session.status === "working"
-      ? colors.working
-      : session.status === "done"
-        ? colors.connected
-        : colors.brewMuted;
+  const inputPreview = perm.toolInput
+    ? Object.entries(perm.toolInput)
+        .map(([k, v]) => `${k}: ${String(v).slice(0, 60)}`)
+        .join("\n")
+    : null;
 
-  const statusLabel = hasPending
-    ? "Waiting"
-    : session.status === "working"
-      ? "Working"
-      : session.status === "done"
-        ? "Done"
-        : "Idle";
-
-  const lastLine = session.outputLines.at(-1) ?? "";
-
-  const onPressIn = useCallback(() => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.97,
-      useNativeDriver: true,
-      speed: 50,
-      bounciness: 4,
-    }).start();
-  }, [scaleAnim]);
-
-  const onPressOut = useCallback(() => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-      speed: 50,
-      bounciness: 4,
-    }).start();
-  }, [scaleAnim]);
+  const respond = useCallback(
+    (decision: "allow" | "deny") => {
+      onPermissionResponse(session.sessionId, perm.toolUseId, decision);
+    },
+    [session.sessionId, perm.toolUseId, onPermissionResponse],
+  );
 
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        if (!hasPending) return false;
-        return (
-          Math.abs(gestureState.dx) > 10 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy)
-        );
-      },
+      onMoveShouldSetPanResponder: (_, gs) =>
+        Math.abs(gs.dx) > 10 && Math.abs(gs.dx) > Math.abs(gs.dy),
       onPanResponderGrant: () => {
         hasTriggeredHaptic.current = false;
       },
-      onPanResponderMove: (_, gestureState) => {
-        translateX.setValue(gestureState.dx);
+      onPanResponderMove: (_, gs) => {
+        translateX.setValue(gs.dx);
         if (
           !hasTriggeredHaptic.current &&
-          Math.abs(gestureState.dx) >= SWIPE_THRESHOLD
+          Math.abs(gs.dx) >= SWIPE_THRESHOLD
         ) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           hasTriggeredHaptic.current = true;
         }
       },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx > SWIPE_THRESHOLD && session.pendingPermission) {
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dx > SWIPE_THRESHOLD) {
           Animated.timing(translateX, {
-            toValue: 300,
+            toValue: 400,
             duration: 200,
             useNativeDriver: true,
           }).start(() => {
-            onPermissionResponse(
-              session.sessionId,
-              session.pendingPermission!.toolUseId,
-              "allow",
-            );
+            respond("allow");
             translateX.setValue(0);
           });
-        } else if (
-          gestureState.dx < -SWIPE_THRESHOLD &&
-          session.pendingPermission
-        ) {
+        } else if (gs.dx < -SWIPE_THRESHOLD) {
           Animated.timing(translateX, {
-            toValue: -300,
+            toValue: -400,
             duration: 200,
             useNativeDriver: true,
           }).start(() => {
-            onPermissionResponse(
-              session.sessionId,
-              session.pendingPermission!.toolUseId,
-              "deny",
-            );
+            respond("deny");
             translateX.setValue(0);
           });
         } else {
@@ -218,124 +179,329 @@ function SessionCard({
     }),
   ).current;
 
-  const allowRevealOpacity = translateX.interpolate({
+  const allowOpacity = translateX.interpolate({
     inputRange: [0, SWIPE_THRESHOLD],
     outputRange: [0, 1],
     extrapolate: "clamp",
   });
-  const denyRevealOpacity = translateX.interpolate({
+  const denyOpacity = translateX.interpolate({
     inputRange: [-SWIPE_THRESHOLD, 0],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
 
-  const accessLabel = hasPending
-    ? `${session.label}, ${statusLabel}, permission request for ${session.pendingPermission!.tool}. Swipe right to allow, left to deny`
-    : `${session.label}, ${statusLabel}`;
-
   return (
-    <View style={styles.swipeContainer}>
-      {hasPending && (
-        <>
-          <Animated.View
-            style={[
-              styles.swipeReveal,
-              styles.swipeRevealAllow,
-              { opacity: allowRevealOpacity },
-            ]}
-            accessibilityElementsHidden
-          >
-            <Text style={styles.swipeRevealText}>✓ Allow</Text>
-          </Animated.View>
-          <Animated.View
-            style={[
-              styles.swipeReveal,
-              styles.swipeRevealDeny,
-              { opacity: denyRevealOpacity },
-            ]}
-            accessibilityElementsHidden
-          >
-            <Text style={styles.swipeRevealText}>✗ Deny</Text>
-          </Animated.View>
-        </>
-      )}
-      <Animated.View
-        style={{ transform: [{ translateX: hasPending ? translateX : 0 }] }}
-        {...(hasPending ? panResponder.panHandlers : {})}
-      >
-        <Pressable
-          onPress={onPress}
-          onPressIn={onPressIn}
-          onPressOut={onPressOut}
-          accessibilityRole="button"
-          accessibilityLabel={accessLabel}
-          accessibilityHint="Opens session details"
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Permission request: ${session.label} wants to use ${perm.tool}. Swipe right to allow, left to deny.`}
+    >
+      <View style={aStyles.swipeContainer}>
+        <Animated.View
+          style={[aStyles.revealAllow, { opacity: allowOpacity }]}
+          accessibilityElementsHidden
         >
-          <Animated.View
-            style={[
-              styles.card,
-              hasPending && styles.cardPending,
-              { transform: [{ scale: scaleAnim }] },
-            ]}
-          >
-            <View style={styles.cardHeader}>
-              <View style={styles.cardTitleRow}>
-                <View
-                  style={[styles.statusDot, { backgroundColor: statusColor }]}
-                  accessibilityElementsHidden
-                />
-                <Text style={styles.cardLabel} numberOfLines={2}>
-                  {session.label}
-                </Text>
-              </View>
-              <View style={styles.cardHeaderRight}>
-                <View
-                  style={[
-                    styles.statusPill,
-                    { backgroundColor: statusColor + "1F" },
-                  ]}
-                >
-                  <Text style={[styles.statusText, { color: statusColor }]}>
-                    {statusLabel}
-                  </Text>
-                </View>
-                <Text style={styles.chevron} accessibilityElementsHidden>
-                  ›
-                </Text>
-              </View>
-            </View>
-
-            {hasPending ? (
-              <View style={styles.permBadge}>
-                <Text style={styles.permBadgeText}>
-                  PERMISSION REQUEST · {session.pendingPermission!.tool}
-                </Text>
-                <Text style={styles.swipeHint}>
-                  ← swipe to allow or deny →
-                </Text>
-              </View>
-            ) : lastLine ? (
-              <Text style={styles.lastLine} numberOfLines={1}>
-                {lastLine}
+          <Text style={aStyles.revealText}>✓ Allow</Text>
+        </Animated.View>
+        <Animated.View
+          style={[aStyles.revealDeny, { opacity: denyOpacity }]}
+          accessibilityElementsHidden
+        >
+          <Text style={aStyles.revealText}>✗ Deny</Text>
+        </Animated.View>
+        <Animated.View
+          style={[aStyles.card, { transform: [{ translateX }] }]}
+          {...panResponder.panHandlers}
+        >
+          <View style={aStyles.topRow}>
+            <Text style={aStyles.requestLabel}>PERMISSION REQUEST</Text>
+            <Text style={aStyles.sessionMeta}>{session.label}</Text>
+          </View>
+          <Text style={aStyles.toolName}>{perm.tool}</Text>
+          {inputPreview && (
+            <View style={aStyles.inputBlock}>
+              <Text style={aStyles.inputText} numberOfLines={3}>
+                {inputPreview}
               </Text>
-            ) : null}
-
-            {session.cwd ? (
-              <View style={styles.cwdRow}>
-                <Text style={styles.cwdIcon} accessibilityElementsHidden>
-                  📁
-                </Text>
-                <Text style={styles.cwd} numberOfLines={1}>
-                  {session.cwd}
-                </Text>
-              </View>
-            ) : null}
-          </Animated.View>
-        </Pressable>
-      </Animated.View>
-    </View>
+            </View>
+          )}
+          {session.cwd && (
+            <Text style={aStyles.cwd} numberOfLines={1}>
+              📁 {session.cwd}
+            </Text>
+          )}
+          <View style={aStyles.buttons}>
+            <TouchableOpacity
+              style={[aStyles.btn, aStyles.denyBtn]}
+              onPress={() => respond("deny")}
+              accessibilityRole="button"
+              accessibilityLabel={`Deny ${perm.tool}`}
+            >
+              <Text style={aStyles.denyText}>Deny</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[aStyles.btn, aStyles.allowBtn]}
+              onPress={() => respond("allow")}
+              accessibilityRole="button"
+              accessibilityLabel={`Allow ${perm.tool}`}
+            >
+              <Text style={aStyles.allowText}>Allow</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </View>
+    </Pressable>
   );
 }
+
+const aStyles = StyleSheet.create({
+  swipeContainer: {
+    position: "relative",
+    overflow: "hidden",
+    borderRadius: radii.xl,
+    marginBottom: spacing.sm,
+  },
+  revealAllow: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.connected + "28",
+    borderRadius: radii.xl,
+    justifyContent: "center",
+    paddingLeft: spacing.lg,
+  },
+  revealDeny: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.offline + "28",
+    borderRadius: radii.xl,
+    justifyContent: "center",
+    alignItems: "flex-end",
+    paddingRight: spacing.lg,
+  },
+  revealText: {
+    fontFamily: typography.jetbrainsMono.medium,
+    fontSize: 14,
+    color: colors.cremaLight,
+    letterSpacing: 0.5,
+  },
+  card: {
+    backgroundColor: colors.brewMedium,
+    borderRadius: radii.xl,
+    padding: spacing.md,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.waiting,
+    shadowColor: colors.claudeAmber,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  topRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  requestLabel: {
+    fontFamily: typography.jetbrainsMono.regular,
+    fontSize: 10,
+    color: colors.waiting,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+  },
+  sessionMeta: {
+    fontFamily: typography.dmSans.regular,
+    fontSize: 12,
+    color: colors.cremaDark,
+  },
+  toolName: {
+    fontFamily: typography.fraunces.bold,
+    fontSize: 24,
+    color: colors.cremaLight,
+    lineHeight: 30,
+  },
+  inputBlock: {
+    backgroundColor: colors.brewDark,
+    borderRadius: radii.sm,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.brewSurface,
+  },
+  inputText: {
+    fontFamily: typography.jetbrainsMono.regular,
+    fontSize: 11,
+    color: colors.terminalMuted,
+    lineHeight: 17,
+  },
+  cwd: {
+    fontFamily: typography.dmSans.light,
+    fontSize: 11,
+    color: colors.brewMuted,
+  },
+  buttons: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  btn: {
+    flex: 1,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radii.sm,
+    alignItems: "center",
+  },
+  denyBtn: {
+    backgroundColor: colors.brewDark,
+    borderWidth: 1,
+    borderColor: colors.offline,
+  },
+  denyText: {
+    fontFamily: typography.jetbrainsMono.medium,
+    fontSize: 14,
+    color: colors.offline,
+  },
+  allowBtn: { backgroundColor: colors.claudeAmber },
+  allowText: {
+    fontFamily: typography.jetbrainsMono.medium,
+    fontSize: 14,
+    color: colors.brewDark,
+  },
+});
+
+function CompactRow({
+  session,
+  onPress,
+}: {
+  session: SessionState;
+  onPress: () => void;
+}) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const statusGlyph =
+    session.status === "working"
+      ? "◉"
+      : session.status === "done"
+        ? "✓"
+        : "○";
+  const statusColor =
+    session.status === "working"
+      ? colors.working
+      : session.status === "done"
+        ? colors.connected
+        : colors.brewMuted;
+  const statusLabel =
+    session.status === "working"
+      ? "Working"
+      : session.status === "done"
+        ? "Done"
+        : "Idle";
+
+  const lastLine = session.outputLines.at(-1) ?? "";
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() =>
+        Animated.spring(scaleAnim, {
+          toValue: 0.98,
+          useNativeDriver: true,
+          speed: 50,
+          bounciness: 4,
+        }).start()
+      }
+      onPressOut={() =>
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          speed: 50,
+          bounciness: 4,
+        }).start()
+      }
+      accessibilityRole="button"
+      accessibilityLabel={`${session.label}, ${statusLabel}`}
+      accessibilityHint="Opens session details"
+    >
+      <Animated.View
+        style={[rStyles.row, { transform: [{ scale: scaleAnim }] }]}
+      >
+        <Text style={[rStyles.glyph, { color: statusColor }]}>
+          {statusGlyph}
+        </Text>
+        <View style={rStyles.body}>
+          <View style={rStyles.titleRow}>
+            <Text style={rStyles.label} numberOfLines={1}>
+              {session.label}
+            </Text>
+            <View
+              style={[rStyles.pill, { backgroundColor: statusColor + "1F" }]}
+            >
+              <Text style={[rStyles.pillText, { color: statusColor }]}>
+                {statusLabel}
+              </Text>
+            </View>
+          </View>
+          {lastLine ? (
+            <Text style={rStyles.lastLine} numberOfLines={1}>
+              {lastLine}
+            </Text>
+          ) : null}
+        </View>
+        <Text style={rStyles.chevron} accessibilityElementsHidden>
+          ›
+        </Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+const rStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.xs,
+    gap: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.brewSurface + "80",
+  },
+  glyph: {
+    fontFamily: typography.jetbrainsMono.regular,
+    fontSize: 14,
+    width: 16,
+    textAlign: "center",
+  },
+  body: { flex: 1, gap: 2 },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  label: {
+    fontFamily: typography.dmSans.semibold,
+    fontSize: 15,
+    color: colors.cremaLight,
+    flex: 1,
+  },
+  pill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radii.pill,
+  },
+  pillText: {
+    fontFamily: typography.jetbrainsMono.regular,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  lastLine: {
+    fontFamily: typography.jetbrainsMono.regular,
+    fontSize: 11,
+    color: colors.terminalMuted,
+    lineHeight: 16,
+  },
+  chevron: {
+    fontFamily: typography.dmSans.light,
+    fontSize: 22,
+    color: colors.brewMuted,
+  },
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -385,31 +551,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.brewMuted,
   },
-  pendingBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    backgroundColor: colors.waiting + "1A",
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.waiting + "33",
-  },
-  pendingBannerDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.waiting,
-  },
-  pendingBannerText: {
-    fontFamily: typography.jetbrainsMono.medium,
-    fontSize: 12,
-    color: colors.waiting,
-    letterSpacing: 0.3,
-  },
   empty: {
     flex: 1,
     alignItems: "center",
@@ -426,120 +567,16 @@ const styles = StyleSheet.create({
   },
   list: { flex: 1 },
   listContent: { padding: spacing.md, gap: spacing.sm },
-  swipeContainer: {
-    position: "relative",
-    overflow: "hidden",
-    borderRadius: radii.lg,
+  compactSection: {
+    gap: 0,
   },
-  swipeReveal: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: radii.lg,
-    justifyContent: "center",
-    paddingHorizontal: spacing.lg,
-  },
-  swipeRevealAllow: {
-    backgroundColor: colors.connected + "30",
-    alignItems: "flex-start",
-  },
-  swipeRevealDeny: {
-    backgroundColor: colors.offline + "30",
-    alignItems: "flex-end",
-  },
-  swipeRevealText: {
-    fontFamily: typography.jetbrainsMono.medium,
-    fontSize: 14,
-    color: colors.cremaLight,
-    letterSpacing: 0.5,
-  },
-  card: {
-    backgroundColor: colors.brewMedium,
-    borderRadius: radii.lg,
-    padding: spacing.md + 4,
-    gap: spacing.xs + 2,
-    borderWidth: 1,
-    borderColor: colors.brewSurface,
-  },
-  cardPending: {
-    borderColor: colors.waiting,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  cardTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    flex: 1,
-  },
-  cardHeaderRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  cardLabel: {
-    fontFamily: typography.dmSans.semibold,
-    fontSize: 16,
-    color: colors.cremaLight,
-    flex: 1,
-    lineHeight: 22,
-  },
-  statusPill: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radii.pill,
-  },
-  statusText: {
+  sectionLabel: {
     fontFamily: typography.jetbrainsMono.regular,
-    fontSize: 11,
-    letterSpacing: 1.5,
+    fontSize: 10,
+    color: colors.brewMuted,
+    letterSpacing: 1.2,
     textTransform: "uppercase",
-  },
-  chevron: {
-    fontFamily: typography.dmSans.light,
-    fontSize: 22,
-    color: colors.brewMuted,
-    marginLeft: -2,
-  },
-  permBadge: {
-    backgroundColor: colors.waiting + "22",
-    borderRadius: radii.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    gap: 2,
-  },
-  permBadgeText: {
-    fontFamily: typography.jetbrainsMono.regular,
-    fontSize: 11,
-    color: colors.waiting,
-    letterSpacing: 0.5,
-  },
-  swipeHint: {
-    fontFamily: typography.jetbrainsMono.regular,
-    fontSize: 10,
-    color: colors.brewMuted,
-    letterSpacing: 0.5,
-  },
-  lastLine: {
-    fontFamily: typography.jetbrainsMono.regular,
-    fontSize: 11,
-    color: colors.terminalMuted,
-    lineHeight: 17,
-  },
-  cwdRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  cwdIcon: {
-    fontSize: 10,
-  },
-  cwd: {
-    fontFamily: typography.dmSans.light,
-    fontSize: 11,
-    color: colors.brewMuted,
-    flex: 1,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
 });

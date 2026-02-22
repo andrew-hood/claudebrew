@@ -10,35 +10,32 @@ import {
   Animated,
 } from 'react-native';
 import { colors, spacing, radii, typography } from '../theme/tokens';
-import { PermissionRequestMessage } from '../types/protocol';
+import { PermissionRequestMessage, SessionState } from '../types/protocol';
 
-interface SessionScreenProps {
-  status: 'working' | 'waiting' | 'done' | null;
-  pendingPermission: PermissionRequestMessage | null;
-  outputLines: string[];
+interface SessionDetailScreenProps {
+  session: SessionState;
   onPermissionResponse: (sessionId: string, toolUseId: string, decision: 'allow' | 'deny') => void;
-  onDisconnect: () => void;
+  onBack: () => void;
 }
 
 function getTerminalLineColor(line: string): string {
   if (line.includes('✓') || line.startsWith('✔')) return colors.terminalSuccess;
-  if (line.startsWith('🔧') || line.startsWith('→') || line.includes('[info]') || line.startsWith('💬'))
+  if (
+    line.startsWith('🔧') ||
+    line.startsWith('→') ||
+    line.includes('[info]') ||
+    line.startsWith('💬')
+  )
     return colors.terminalInfo;
   if (line.startsWith('✗') || line.includes('[error]')) return colors.offline;
   return colors.terminalMuted;
 }
 
-export function SessionScreen({
-  status,
-  pendingPermission,
-  outputLines,
-  onPermissionResponse,
-  onDisconnect,
-}: SessionScreenProps) {
+export function SessionDetailScreen({ session, onPermissionResponse, onBack }: SessionDetailScreenProps) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const breathAnim = useRef(new Animated.Value(1)).current;
 
-  const isActive = status === 'waiting' || status === 'working';
+  const isActive = session.status === 'waiting' || session.status === 'working';
 
   useEffect(() => {
     if (!isActive) {
@@ -56,7 +53,7 @@ export function SessionScreen({
   }, [isActive, pulseAnim]);
 
   useEffect(() => {
-    if (pendingPermission) {
+    if (session.pendingPermission) {
       breathAnim.setValue(1);
       return;
     }
@@ -68,23 +65,23 @@ export function SessionScreen({
     );
     breathe.start();
     return () => breathe.stop();
-  }, [pendingPermission, breathAnim]);
+  }, [session.pendingPermission, breathAnim]);
 
   const statusColor =
-    status === 'waiting'
+    session.status === 'waiting'
       ? colors.waiting
-      : status === 'working'
+      : session.status === 'working'
         ? colors.working
-        : status === 'done'
+        : session.status === 'done'
           ? colors.connected
           : colors.connected;
 
   const statusLabel =
-    status === 'waiting'
+    session.status === 'waiting'
       ? 'Waiting'
-      : status === 'working'
+      : session.status === 'working'
         ? 'Working'
-        : status === 'done'
+        : session.status === 'done'
           ? 'Done'
           : 'Connected';
 
@@ -92,7 +89,9 @@ export function SessionScreen({
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>ClaudeBrew</Text>
+        <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+          <Text style={styles.backText}>← Sessions</Text>
+        </TouchableOpacity>
         <View style={[styles.statusPill, { backgroundColor: statusColor + '1F' }]}>
           <Animated.View
             style={[styles.statusDot, { backgroundColor: statusColor, opacity: pulseAnim }]}
@@ -101,10 +100,15 @@ export function SessionScreen({
         </View>
       </View>
 
+      {/* Session label */}
+      <Text style={styles.sessionLabel} numberOfLines={1}>
+        {session.label}
+      </Text>
+
       {/* Terminal output */}
-      {outputLines.length > 0 && (
+      {session.outputLines.length > 0 && (
         <ScrollView style={styles.terminal} contentContainerStyle={styles.terminalContent}>
-          {outputLines.slice(-10).map((line, i) => (
+          {session.outputLines.slice(-10).map((line, i) => (
             <Text
               key={i}
               style={[styles.terminalLine, { color: getTerminalLineColor(line) }]}
@@ -118,14 +122,22 @@ export function SessionScreen({
 
       {/* Main content */}
       <View style={styles.content}>
-        {pendingPermission ? (
+        {session.pendingPermission ? (
           <PermissionPrompt
-            msg={pendingPermission}
+            msg={session.pendingPermission}
             onAllow={() =>
-              onPermissionResponse(pendingPermission.sessionId, pendingPermission.toolUseId, 'allow')
+              onPermissionResponse(
+                session.pendingPermission!.sessionId,
+                session.pendingPermission!.toolUseId,
+                'allow',
+              )
             }
             onDeny={() =>
-              onPermissionResponse(pendingPermission.sessionId, pendingPermission.toolUseId, 'deny')
+              onPermissionResponse(
+                session.pendingPermission!.sessionId,
+                session.pendingPermission!.toolUseId,
+                'deny',
+              )
             }
           />
         ) : (
@@ -137,11 +149,6 @@ export function SessionScreen({
           </View>
         )}
       </View>
-
-      {/* Disconnect */}
-      <TouchableOpacity style={styles.disconnect} onPress={onDisconnect}>
-        <Text style={styles.disconnectText}>Disconnect</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -165,9 +172,7 @@ function PermissionPrompt({
     <View style={styles.permissionCard}>
       <Text style={styles.permissionLabel}>PERMISSION REQUEST</Text>
       <Text style={styles.permissionTool}>{msg.tool}</Text>
-      {inputPreview ? (
-        <Text style={styles.permissionInput}>{inputPreview}</Text>
-      ) : null}
+      {inputPreview ? <Text style={styles.permissionInput}>{inputPreview}</Text> : null}
       <View style={styles.permissionButtons}>
         <TouchableOpacity style={[styles.permBtn, styles.denyBtn]} onPress={onDeny}>
           <Text style={styles.denyText}>Deny</Text>
@@ -181,21 +186,27 @@ function PermissionPrompt({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingTop: (Platform.OS === 'android' ? StatusBar.currentHeight ?? 24 : 0) + spacing.sm,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.xs,
   },
-  logo: {
+  backBtn: { paddingVertical: spacing.xs },
+  backText: {
+    fontFamily: typography.dmSans.regular,
+    fontSize: 14,
+    color: colors.claudeAmber,
+  },
+  sessionLabel: {
     fontFamily: typography.fraunces.bold,
-    fontSize: 20,
+    fontSize: 18,
     color: colors.cremaLight,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
   },
   statusPill: {
     flexDirection: 'row',
@@ -205,11 +216,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     gap: spacing.xs,
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusText: {
     fontFamily: typography.jetbrainsMono.regular,
     fontSize: 10,
@@ -225,9 +232,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.brewSurface,
   },
-  terminalContent: {
-    gap: 2,
-  },
+  terminalContent: { gap: 2 },
   terminalLine: {
     fontFamily: typography.jetbrainsMono.regular,
     fontSize: 12,
@@ -237,13 +242,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.md,
   },
-  idle: {
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  idleIcon: {
-    fontSize: 48,
-  },
+  idle: { alignItems: 'center', gap: spacing.md },
+  idleIcon: { fontSize: 48 },
   idleText: {
     fontFamily: typography.fraunces.italic,
     fontSize: 16,
@@ -298,21 +298,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.offline,
   },
-  allowBtn: {
-    backgroundColor: colors.claudeAmber,
-  },
+  allowBtn: { backgroundColor: colors.claudeAmber },
   allowText: {
     fontFamily: typography.jetbrainsMono.medium,
     fontSize: 14,
     color: colors.brewDark,
-  },
-  disconnect: {
-    alignItems: 'center',
-    paddingBottom: spacing.md,
-  },
-  disconnectText: {
-    fontFamily: typography.dmSans.light,
-    fontSize: 13,
-    color: colors.brewMuted,
   },
 });

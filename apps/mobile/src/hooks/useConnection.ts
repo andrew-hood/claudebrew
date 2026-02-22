@@ -39,9 +39,7 @@ export function useConnection() {
     pin,
     connectTo,
     disconnect: disconnectFrom,
-    outputLines: ws.outputLines,
-    pendingPermission: ws.pendingPermission,
-    status: ws.status,
+    sessions: ws.sessions,
     sendPermissionResponse: ws.sendPermissionResponse,
   };
 }

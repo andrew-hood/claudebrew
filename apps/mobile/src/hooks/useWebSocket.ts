@@ -1,25 +1,119 @@
 import { useReducer, useCallback, useRef, useEffect } from 'react';
-import { PermissionRequestMessage, ServerMessage } from '../types/protocol';
+import { PermissionRequestMessage, ServerMessage, SessionState } from '../types/protocol';
 
 const MAX_OUTPUT_LINES = 50;
 const RECONNECT_DELAY = 2000;
 
 interface State {
-  outputLines: string[];
-  pendingPermission: PermissionRequestMessage | null;
-  status: 'working' | 'waiting' | 'done' | null;
+  sessions: Map<string, SessionState>;
   connected: boolean;
 }
 
 type Action =
-  | { type: 'output'; text: string }
-  | { type: 'permission'; msg: PermissionRequestMessage }
-  | { type: 'status'; state: 'working' | 'waiting' | 'done' }
-  | { type: 'pair_ok' }
   | { type: 'connected' }
   | { type: 'disconnected' }
-  | { type: 'clear_permission' }
-  | { type: 'hook_activity'; sessionId: string; event: string };
+  | { type: 'pair_ok' }
+  | {
+      type: 'hook_activity';
+      sessionId: string;
+      cwd?: string;
+      event: string;
+      line: string | null;
+      statusChange: 'working' | 'waiting' | 'done' | null;
+    }
+  | { type: 'permission'; msg: PermissionRequestMessage }
+  | { type: 'clear_permission'; sessionId: string; toolUseId: string };
+
+function getOrCreate(sessions: Map<string, SessionState>, sessionId: string, cwd?: string): SessionState {
+  const existing = sessions.get(sessionId);
+  if (existing) return existing;
+  const label = cwd
+    ? cwd.split('/').filter(Boolean).at(-1) ?? sessionId.slice(0, 8)
+    : sessionId.slice(0, 8);
+  return {
+    sessionId,
+    cwd: cwd ?? '',
+    label,
+    status: null,
+    outputLines: [],
+    pendingPermission: null,
+    lastActivity: Date.now(),
+  };
+}
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'connected':
+      return state;
+    case 'disconnected':
+      return { sessions: new Map(), connected: false };
+    case 'pair_ok':
+      return { ...state, connected: true };
+
+    case 'hook_activity': {
+      const sessions = new Map(state.sessions);
+      const session = { ...getOrCreate(sessions, action.sessionId, action.cwd) };
+      session.lastActivity = Date.now();
+
+      if (action.cwd && !session.cwd) {
+        session.cwd = action.cwd;
+        session.label = action.cwd.split('/').filter(Boolean).at(-1) ?? session.sessionId.slice(0, 8);
+      }
+
+      if (action.line) {
+        const lines = [...session.outputLines, action.line];
+        if (lines.length > MAX_OUTPUT_LINES) lines.shift();
+        session.outputLines = lines;
+      }
+
+      if (action.statusChange) {
+        session.status = action.statusChange;
+        if (action.statusChange === 'working') session.pendingPermission = null;
+      }
+
+      if (
+        session.pendingPermission &&
+        (action.event === 'PostToolUse' || action.event === 'PreToolUse')
+      ) {
+        session.pendingPermission = null;
+      }
+
+      sessions.set(action.sessionId, session);
+      return { ...state, sessions };
+    }
+
+    case 'permission': {
+      const sessions = new Map(state.sessions);
+      const session = { ...getOrCreate(sessions, action.msg.sessionId) };
+      session.pendingPermission = action.msg;
+      session.status = 'waiting';
+      session.lastActivity = Date.now();
+      sessions.set(action.msg.sessionId, session);
+      return { ...state, sessions };
+    }
+
+    case 'clear_permission': {
+      const sessions = new Map(state.sessions);
+      const session = sessions.get(action.sessionId);
+      if (!session) return state;
+      if (session.pendingPermission?.toolUseId !== action.toolUseId) return state;
+      sessions.set(action.sessionId, { ...session, pendingPermission: null });
+      return { ...state, sessions };
+    }
+
+    default:
+      return state;
+  }
+}
+
+function sortedSessions(map: Map<string, SessionState>): SessionState[] {
+  return [...map.values()].sort((a, b) => {
+    const aPending = a.pendingPermission ? 1 : 0;
+    const bPending = b.pendingPermission ? 1 : 0;
+    if (aPending !== bPending) return bPending - aPending;
+    return b.lastActivity - a.lastActivity;
+  });
+}
 
 function formatHookLine(msg: Extract<ServerMessage, { type: 'hook_event' }>): string | null {
   switch (msg.event) {
@@ -37,54 +131,14 @@ function formatHookLine(msg: Extract<ServerMessage, { type: 'hook_event' }>): st
     case 'Notification':
       return msg.notificationType ? `💬 ${msg.notificationType}` : null;
     case 'Stop':
-      return null; // handled via status
+      return null;
     default:
       return null;
   }
 }
 
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case 'output': {
-      const lines = [...state.outputLines, action.text];
-      if (lines.length > MAX_OUTPUT_LINES) lines.shift();
-      return { ...state, outputLines: lines };
-    }
-    case 'permission':
-      return { ...state, pendingPermission: action.msg, status: 'waiting' };
-    case 'status':
-      return {
-        ...state,
-        status: action.state,
-        pendingPermission: action.state === 'working' ? null : state.pendingPermission,
-      };
-    case 'pair_ok':
-      return { ...state, connected: true };
-    case 'connected':
-      return state;
-    case 'disconnected':
-      return { ...state, connected: false, status: null };
-    case 'clear_permission':
-      return { ...state, pendingPermission: null };
-    case 'hook_activity':
-      // PreToolUse only fires after a permission is granted, so if we see it
-      // for the same session as our pending permission, it was resolved externally
-      if (
-        state.pendingPermission?.sessionId === action.sessionId &&
-        (action.event === 'PreToolUse' || action.event === 'PostToolUse')
-      ) {
-        return { ...state, pendingPermission: null };
-      }
-      return state;
-    default:
-      return state;
-  }
-}
-
 const initialState: State = {
-  outputLines: [],
-  pendingPermission: null,
-  status: null,
+  sessions: new Map(),
   connected: false,
 };
 
@@ -110,23 +164,29 @@ export function useWebSocket(url: string | null, pin: string) {
         const msg: ServerMessage = JSON.parse(event.data as string);
         switch (msg.type) {
           case 'output':
-            dispatch({ type: 'output', text: msg.text });
+            // Currently unused by daemon — ignore
             break;
           case 'hook_event': {
             const line = formatHookLine(msg);
-            if (line) dispatch({ type: 'output', text: line });
-            if (msg.event === 'Stop') dispatch({ type: 'status', state: 'done' });
-            dispatch({ type: 'hook_activity', sessionId: msg.sessionId, event: msg.event });
+            const statusChange = msg.event === 'Stop' ? 'done' : null;
+            dispatch({
+              type: 'hook_activity',
+              sessionId: msg.sessionId,
+              cwd: msg.cwd,
+              event: msg.event,
+              line,
+              statusChange,
+            });
             break;
           }
           case 'permission_request':
             dispatch({ type: 'permission', msg });
             break;
           case 'permission_dismissed':
-            dispatch({ type: 'clear_permission' });
+            dispatch({ type: 'clear_permission', sessionId: msg.sessionId, toolUseId: msg.toolUseId });
             break;
           case 'status':
-            dispatch({ type: 'status', state: msg.state });
+            // Currently unused by daemon — ignore
             break;
           case 'pair_ok':
             dispatch({ type: 'pair_ok' });
@@ -169,7 +229,7 @@ export function useWebSocket(url: string | null, pin: string) {
   const sendPermissionResponse = useCallback(
     (sessionId: string, toolUseId: string, decision: 'allow' | 'deny') => {
       send({ type: 'permission_response', sessionId, toolUseId, decision });
-      dispatch({ type: 'clear_permission' });
+      dispatch({ type: 'clear_permission', sessionId, toolUseId });
     },
     [send],
   );
@@ -185,5 +245,11 @@ export function useWebSocket(url: string | null, pin: string) {
     };
   }, [url, connect, disconnect]);
 
-  return { ...state, connect, disconnect, sendPermissionResponse };
+  return {
+    sessions: sortedSessions(state.sessions),
+    connected: state.connected,
+    connect,
+    disconnect,
+    sendPermissionResponse,
+  };
 }

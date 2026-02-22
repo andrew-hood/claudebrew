@@ -1,39 +1,103 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated } from 'react-native';
-import { QRScanner } from '../components/QRScanner';
-import { colors, spacing, radii, typography } from '../theme/tokens';
+import React, { useEffect, useRef, useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Animated,
+  AccessibilityInfo,
+} from "react-native";
+import { QRScanner } from "../components/QRScanner";
+import { colors, spacing, radii, typography } from "../theme/tokens";
 
 interface ConnectScreenProps {
   connecting: boolean;
   onConnect: (ip: string, pin: string) => void;
+  initialIp?: string;
 }
 
-export function ConnectScreen({ connecting, onConnect }: ConnectScreenProps) {
-  const [ip, setIp] = useState('');
-  const [pin, setPin] = useState('');
+export function ConnectScreen({ connecting, onConnect, initialIp }: ConnectScreenProps) {
+  const [ip, setIp] = useState(initialIp ?? "");
+  const [pinDigits, setPinDigits] = useState(["", "", "", ""]);
   const [scanning, setScanning] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const pinRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
 
   const steamAnim = useRef(new Animated.Value(0)).current;
   const steamOpacity = useRef(new Animated.Value(0.7)).current;
 
+  // Sync initialIp when it arrives (e.g. after auto-connect fallback)
   useEffect(() => {
+    if (initialIp && !ip) setIp(initialIp);
+  }, [initialIp]);
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) return;
     const steam = Animated.loop(
       Animated.parallel([
         Animated.sequence([
-          Animated.timing(steamAnim, { toValue: -6, duration: 2000, useNativeDriver: true }),
-          Animated.timing(steamAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
+          Animated.timing(steamAnim, {
+            toValue: -6,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(steamAnim, {
+            toValue: 0,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
         ]),
         Animated.sequence([
-          Animated.timing(steamOpacity, { toValue: 0.3, duration: 2000, useNativeDriver: true }),
-          Animated.timing(steamOpacity, { toValue: 0.7, duration: 2000, useNativeDriver: true }),
+          Animated.timing(steamOpacity, {
+            toValue: 0.3,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(steamOpacity, {
+            toValue: 0.7,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
         ]),
       ]),
     );
     steam.start();
     return () => steam.stop();
-  }, [steamAnim, steamOpacity]);
+  }, [steamAnim, steamOpacity, reduceMotion]);
 
-  const canConnect = ip.trim().length > 0 && pin.trim().length === 4;
+  const pin = pinDigits.join("");
+  const canConnect = ip.trim().length > 0 && pin.length === 4;
+
+  const handlePinChange = (text: string, index: number) => {
+    const digit = text.replace(/[^0-9]/g, "").slice(-1);
+    const next = [...pinDigits];
+    next[index] = digit;
+    setPinDigits(next);
+
+    if (digit && index < 3) {
+      pinRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handlePinKeyPress = (key: string, index: number) => {
+    if (key === "Backspace" && !pinDigits[index] && index > 0) {
+      pinRefs.current[index - 1]?.focus();
+      const next = [...pinDigits];
+      next[index - 1] = "";
+      setPinDigits(next);
+    }
+  };
+
+  const handleConnect = () => {
+    onConnect(ip.trim(), pin);
+  };
 
   if (scanning) {
     return (
@@ -49,20 +113,29 @@ export function ConnectScreen({ connecting, onConnect }: ConnectScreenProps) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.hero}>
+      <View style={styles.hero} accessibilityRole="header">
         <View style={styles.logoMark}>
-          <Text style={styles.logoIcon}>☕</Text>
-          <Animated.Text
-            style={[
-              styles.steam,
-              { transform: [{ translateY: steamAnim }], opacity: steamOpacity },
-            ]}
-          >
-            ✦
-          </Animated.Text>
+          <Text style={styles.logoIcon} accessibilityElementsHidden>
+            ☕
+          </Text>
+          {!reduceMotion && (
+            <Animated.Text
+              style={[
+                styles.steam,
+                { transform: [{ translateY: steamAnim }], opacity: steamOpacity },
+              ]}
+              accessibilityElementsHidden
+            >
+              ✦
+            </Animated.Text>
+          )}
         </View>
-        <Text style={styles.logo}>ClaudeBrew</Text>
-        <Text style={styles.tagline}>Brewing answers while you brew coffee</Text>
+        <Text style={styles.logo} accessibilityRole="header">
+          Claude<Text style={styles.logoHighlight}>Brew</Text>
+        </Text>
+        <Text style={styles.tagline}>
+          Brewing answers while you brew coffee
+        </Text>
       </View>
 
       <View style={styles.form}>
@@ -70,17 +143,22 @@ export function ConnectScreen({ connecting, onConnect }: ConnectScreenProps) {
           style={styles.scanButton}
           onPress={() => setScanning(true)}
           disabled={connecting}
+          accessibilityRole="button"
+          accessibilityLabel="Scan QR code to connect"
+          accessibilityHint="Opens camera to scan QR code from terminal"
         >
           <Text style={styles.scanButtonText}>Scan QR Code</Text>
         </TouchableOpacity>
 
-        <View style={styles.divider}>
+        <View style={styles.divider} accessibilityElementsHidden>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>or enter manually</Text>
           <View style={styles.dividerLine} />
         </View>
 
-        <Text style={styles.label}>IP ADDRESS</Text>
+        <Text style={styles.label} accessibilityElementsHidden>
+          IP ADDRESS
+        </Text>
         <TextInput
           style={styles.input}
           value={ip}
@@ -90,25 +168,50 @@ export function ConnectScreen({ connecting, onConnect }: ConnectScreenProps) {
           keyboardType="numeric"
           autoCapitalize="none"
           autoCorrect={false}
+          accessibilityLabel="IP address"
+          accessibilityHint="Enter the IP address shown in your terminal"
         />
 
-        <Text style={styles.label}>PIN</Text>
-        <TextInput
-          style={styles.input}
-          value={pin}
-          onChangeText={setPin}
-          placeholder="0000"
-          placeholderTextColor={colors.brewMuted}
-          keyboardType="number-pad"
-          maxLength={4}
-        />
+        <Text style={styles.label} accessibilityElementsHidden>
+          PIN
+        </Text>
+        <View
+          style={styles.pinRow}
+          accessibilityLabel={`PIN code, ${pin.length} of 4 digits entered`}
+          accessibilityRole="text"
+        >
+          {pinDigits.map((digit, i) => (
+            <TextInput
+              key={i}
+              ref={(ref) => {
+                pinRefs.current[i] = ref;
+              }}
+              style={[styles.pinBox, digit ? styles.pinBoxFilled : null]}
+              value={digit}
+              onChangeText={(text) => handlePinChange(text, i)}
+              onKeyPress={({ nativeEvent }) =>
+                handlePinKeyPress(nativeEvent.key, i)
+              }
+              keyboardType="number-pad"
+              maxLength={1}
+              textAlign="center"
+              selectTextOnFocus
+              accessibilityLabel={`PIN digit ${i + 1}`}
+            />
+          ))}
+        </View>
 
         <TouchableOpacity
           style={[styles.button, !canConnect && styles.buttonDisabled]}
-          onPress={() => onConnect(ip.trim(), pin.trim())}
+          onPress={handleConnect}
           disabled={!canConnect || connecting}
+          accessibilityRole="button"
+          accessibilityLabel={connecting ? "Connecting" : "Connect to daemon"}
+          accessibilityState={{ disabled: !canConnect || connecting, busy: connecting }}
         >
-          <Text style={styles.buttonText}>{connecting ? 'Connecting...' : 'Connect'}</Text>
+          <Text style={styles.buttonText}>
+            {connecting ? "Connecting..." : "Connect"}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -118,25 +221,25 @@ export function ConnectScreen({ connecting, onConnect }: ConnectScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingHorizontal: spacing.xl,
   },
   hero: {
-    alignItems: 'center',
-    marginBottom: spacing['3xl'],
+    alignItems: "center",
+    marginBottom: spacing["3xl"],
   },
   logoMark: {
-    position: 'relative',
-    alignItems: 'center',
+    position: "relative",
+    alignItems: "center",
     marginBottom: spacing.md,
     height: 64,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   logoIcon: {
     fontSize: 40,
   },
   steam: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     fontFamily: typography.jetbrainsMono.regular,
     fontSize: 14,
@@ -146,6 +249,9 @@ const styles = StyleSheet.create({
     fontFamily: typography.fraunces.bold,
     fontSize: 28,
     color: colors.cremaLight,
+  },
+  logoHighlight: {
+    color: colors.claudeGold,
   },
   tagline: {
     fontFamily: typography.fraunces.italic,
@@ -158,7 +264,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: typography.jetbrainsMono.regular,
-    fontSize: 10,
+    fontSize: 11,
     color: colors.cremaDark,
     letterSpacing: 1.5,
     marginTop: spacing.md,
@@ -174,12 +280,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
   },
+  pinRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  pinBox: {
+    flex: 1,
+    fontFamily: typography.jetbrainsMono.medium,
+    fontSize: 24,
+    color: colors.cremaLight,
+    backgroundColor: colors.brewMedium,
+    borderWidth: 1,
+    borderColor: colors.brewSurface,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md,
+    height: 56,
+  },
+  pinBoxFilled: {
+    borderColor: colors.claudeAmber,
+  },
   scanButton: {
     borderWidth: 1,
     borderColor: colors.claudeAmber,
     borderRadius: radii.md,
     paddingVertical: spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   scanButtonText: {
     fontFamily: typography.dmSans.semibold,
@@ -187,8 +312,8 @@ const styles = StyleSheet.create({
     color: colors.claudeAmber,
   },
   divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: spacing.md,
   },
   dividerLine: {
@@ -206,7 +331,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.claudeAmber,
     borderRadius: radii.md,
     paddingVertical: spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: spacing.lg,
   },
   buttonDisabled: {

@@ -1,6 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { ServerMessage, ClientMessage, HookEvent, PermissionResponseMessage } from './types';
 import { SocketServer } from './socket-server';
+import { log } from './logger';
 
 export class RemoteServer {
   private wss: WebSocketServer;
@@ -88,7 +89,7 @@ export class RemoteServer {
 
     if (msg.type === 'permission_response') {
       const r = msg as PermissionResponseMessage;
-      console.log(`[claudebrew] permission_response decision=${r.decision} sessionId=${r.sessionId.slice(0, 8)} toolUseId=${r.toolUseId}`);
+      log(`[claudebrew] permission_response decision=${r.decision} sessionId=${r.sessionId.slice(0, 8)} toolUseId=${r.toolUseId}`);
       this.socketServer?.respondToPermission(r.sessionId, r.toolUseId, r.decision, r.reason);
     }
   }

@@ -10,9 +10,15 @@
       "image": "./assets/splash.png",
       "backgroundColor": "#1C1410"
     },
+    "plugins": [
+      ["expo-notifications", { "sounds": [] }]
+    ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.claudebrew.app"
+      "bundleIdentifier": "com.claudebrew.app",
+      "infoPlist": {
+        "NSUserNotificationAlertUsageDescription": "ClaudeBrew notifies you when Claude Code needs permission to use a tool."
+      }
     },
     "android": {
       "adaptiveIcon": {

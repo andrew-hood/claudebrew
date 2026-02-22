@@ -3,6 +3,7 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { EventEmitter } from 'events';
 import { HookEvent } from './types';
+import { log } from './logger';
 
 const SOCKET_PATH = '/tmp/claudebrew.sock';
 
@@ -32,7 +33,7 @@ export class SocketServer extends EventEmitter {
 
     this.server = net.createServer((socket) => this.handleConnection(socket));
     this.server.listen(SOCKET_PATH, () => {
-      console.log(`[claudebrew] Socket server listening at ${SOCKET_PATH}`);
+      log(`[claudebrew] Socket server listening at ${SOCKET_PATH}`);
     });
 
     this.server.on('error', (err) => {
@@ -59,7 +60,7 @@ export class SocketServer extends EventEmitter {
         return;
       }
 
-      console.log(`[claudebrew] hook: ${event.event} tool=${event.tool ?? '-'} session=${event.sessionId.slice(0, 8)}`);
+      log(`[claudebrew] hook: ${event.event} tool=${event.tool ?? '-'} session=${event.sessionId.slice(0, 8)}`);
 
       if (event.expectsResponse) {
         if (!event.toolUseId) {
@@ -101,7 +102,7 @@ export class SocketServer extends EventEmitter {
   ): void {
     const key = `${sessionId}:${toolUseId}`;
     const pending = this.pending.get(key);
-    console.log(`[claudebrew] respondToPermission key=${key.slice(0, 30)} found=${!!pending} pendingKeys=[${[...this.pending.keys()].map(k => k.slice(0, 30)).join(', ')}]`);
+    log(`[claudebrew] respondToPermission key=${key.slice(0, 30)} found=${!!pending} pendingKeys=[${[...this.pending.keys()].map(k => k.slice(0, 30)).join(', ')}]`);
     if (!pending) return;
     this.pending.delete(key);
     pending.resolve({ decision, reason });

@@ -53,3 +53,13 @@ export interface PermissionDismissedMessage {
 
 export type ServerMessage = OutputMessage | StatusMessage | PairOkMessage | HookEventMessage | PermissionRequestMessage | PermissionDismissedMessage;
 export type ClientMessage = PairMessage | PermissionResponseMessage;
+
+export interface SessionState {
+  sessionId: string;
+  cwd: string;
+  label: string; // basename(cwd) or short sessionId fallback
+  status: 'working' | 'waiting' | 'done' | null;
+  outputLines: string[];
+  pendingPermission: PermissionRequestMessage | null;
+  lastActivity: number; // Date.now() timestamp
+}

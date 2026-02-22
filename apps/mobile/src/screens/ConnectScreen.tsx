@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { QRScanner } from '../components/QRScanner';
 import { colors, spacing, radii, typography } from '../theme/tokens';
 
@@ -12,6 +12,26 @@ export function ConnectScreen({ connecting, onConnect }: ConnectScreenProps) {
   const [ip, setIp] = useState('');
   const [pin, setPin] = useState('');
   const [scanning, setScanning] = useState(false);
+
+  const steamAnim = useRef(new Animated.Value(0)).current;
+  const steamOpacity = useRef(new Animated.Value(0.7)).current;
+
+  useEffect(() => {
+    const steam = Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(steamAnim, { toValue: -6, duration: 2000, useNativeDriver: true }),
+          Animated.timing(steamAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(steamOpacity, { toValue: 0.3, duration: 2000, useNativeDriver: true }),
+          Animated.timing(steamOpacity, { toValue: 0.7, duration: 2000, useNativeDriver: true }),
+        ]),
+      ]),
+    );
+    steam.start();
+    return () => steam.stop();
+  }, [steamAnim, steamOpacity]);
 
   const canConnect = ip.trim().length > 0 && pin.trim().length === 4;
 
@@ -30,6 +50,17 @@ export function ConnectScreen({ connecting, onConnect }: ConnectScreenProps) {
   return (
     <View style={styles.container}>
       <View style={styles.hero}>
+        <View style={styles.logoMark}>
+          <Text style={styles.logoIcon}>☕</Text>
+          <Animated.Text
+            style={[
+              styles.steam,
+              { transform: [{ translateY: steamAnim }], opacity: steamOpacity },
+            ]}
+          >
+            ✦
+          </Animated.Text>
+        </View>
         <Text style={styles.logo}>ClaudeBrew</Text>
         <Text style={styles.tagline}>Brewing answers while you brew coffee</Text>
       </View>
@@ -49,7 +80,7 @@ export function ConnectScreen({ connecting, onConnect }: ConnectScreenProps) {
           <View style={styles.dividerLine} />
         </View>
 
-        <Text style={styles.label}>MAC IP ADDRESS</Text>
+        <Text style={styles.label}>IP ADDRESS</Text>
         <TextInput
           style={styles.input}
           value={ip}
@@ -93,6 +124,23 @@ const styles = StyleSheet.create({
   hero: {
     alignItems: 'center',
     marginBottom: spacing['3xl'],
+  },
+  logoMark: {
+    position: 'relative',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    height: 64,
+    justifyContent: 'flex-end',
+  },
+  logoIcon: {
+    fontSize: 40,
+  },
+  steam: {
+    position: 'absolute',
+    top: 0,
+    fontFamily: typography.jetbrainsMono.regular,
+    fontSize: 14,
+    color: colors.claudeAmber,
   },
   logo: {
     fontFamily: typography.fraunces.bold,

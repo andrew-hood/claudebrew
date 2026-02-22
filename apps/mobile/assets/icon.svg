@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D4943A"/>
+      <stop offset="100%" stop-color="#E8AA4A"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <!-- Saucer -->
+  <rect x="270" y="720" width="484" height="44" rx="22" fill="white"/>
+
+  <!-- Cup body -->
+  <rect x="342" y="440" width="340" height="280" rx="28" fill="white"/>
+
+  <!-- Handle (D-shape) -->
+  <path d="M682,480 C762,480 762,680 682,680" stroke="white" stroke-width="36" fill="none" stroke-linecap="round"/>
+
+  <!-- Steam sparkles (4-pointed stars) -->
+  <!-- Large star at (480, 340) outer-r=52 inner-r=14 -->
+  <polygon points="480,288 494,326 534,340 494,354 480,392 466,354 426,340 466,326" fill="white"/>
+
+  <!-- Medium star at (560, 300) outer-r=36 inner-r=10 -->
+  <polygon points="560,264 570,290 596,300 570,310 560,336 550,310 524,300 550,290" fill="white"/>
+
+  <!-- Small star at (530, 245) outer-r=22 inner-r=6 -->
+  <polygon points="530,223 536,239 552,245 536,251 530,267 524,251 508,245 524,239" fill="white"/>
+</svg>

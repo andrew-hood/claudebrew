@@ -59,5 +59,11 @@ export interface HookEvent {
   status?: string;
 }
 
-export type ServerMessage = OutputMessage | StatusMessage | PairOkMessage | HookEventMessage | PermissionRequestMessage;
+export interface PermissionDismissedMessage {
+  type: 'permission_dismissed';
+  sessionId: string;
+  toolUseId: string;
+}
+
+export type ServerMessage = OutputMessage | StatusMessage | PairOkMessage | HookEventMessage | PermissionRequestMessage | PermissionDismissedMessage;
 export type ClientMessage = PairMessage | PermissionResponseMessage;

@@ -42,6 +42,10 @@ export class RemoteServer {
   attachSocketServer(socketServer: SocketServer): void {
     this.socketServer = socketServer;
 
+    socketServer.on('permissionDismissed', (sessionId: string, toolUseId: string) => {
+      this.broadcast({ type: 'permission_dismissed', sessionId, toolUseId });
+    });
+
     socketServer.on('hookEvent', (hookEvent: HookEvent) => {
       if (hookEvent.expectsResponse && hookEvent.tool) {
         this.broadcast({

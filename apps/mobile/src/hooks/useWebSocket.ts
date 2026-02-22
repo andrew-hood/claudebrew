@@ -18,7 +18,8 @@ type Action =
   | { type: 'pair_ok' }
   | { type: 'connected' }
   | { type: 'disconnected' }
-  | { type: 'clear_permission' };
+  | { type: 'clear_permission' }
+  | { type: 'hook_activity'; sessionId: string; event: string };
 
 function formatHookLine(msg: Extract<ServerMessage, { type: 'hook_event' }>): string | null {
   switch (msg.event) {
@@ -65,6 +66,16 @@ function reducer(state: State, action: Action): State {
       return { ...state, connected: false, status: null };
     case 'clear_permission':
       return { ...state, pendingPermission: null };
+    case 'hook_activity':
+      // PreToolUse only fires after a permission is granted, so if we see it
+      // for the same session as our pending permission, it was resolved externally
+      if (
+        state.pendingPermission?.sessionId === action.sessionId &&
+        (action.event === 'PreToolUse' || action.event === 'PostToolUse')
+      ) {
+        return { ...state, pendingPermission: null };
+      }
+      return state;
     default:
       return state;
   }
@@ -105,10 +116,14 @@ export function useWebSocket(url: string | null, pin: string) {
             const line = formatHookLine(msg);
             if (line) dispatch({ type: 'output', text: line });
             if (msg.event === 'Stop') dispatch({ type: 'status', state: 'done' });
+            dispatch({ type: 'hook_activity', sessionId: msg.sessionId, event: msg.event });
             break;
           }
           case 'permission_request':
             dispatch({ type: 'permission', msg });
+            break;
+          case 'permission_dismissed':
+            dispatch({ type: 'clear_permission' });
             break;
           case 'status':
             dispatch({ type: 'status', state: msg.state });

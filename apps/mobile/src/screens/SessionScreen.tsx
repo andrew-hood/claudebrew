@@ -1,5 +1,14 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, StatusBar } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  StatusBar,
+  Animated,
+} from 'react-native';
 import { colors, spacing, radii, typography } from '../theme/tokens';
 import { PermissionRequestMessage } from '../types/protocol';
 
@@ -11,6 +20,14 @@ interface SessionScreenProps {
   onDisconnect: () => void;
 }
 
+function getTerminalLineColor(line: string): string {
+  if (line.includes('✓') || line.startsWith('✔')) return colors.terminalSuccess;
+  if (line.startsWith('🔧') || line.startsWith('→') || line.includes('[info]') || line.startsWith('💬'))
+    return colors.terminalInfo;
+  if (line.startsWith('✗') || line.includes('[error]')) return colors.offline;
+  return colors.terminalMuted;
+}
+
 export function SessionScreen({
   status,
   pendingPermission,
@@ -18,6 +35,41 @@ export function SessionScreen({
   onPermissionResponse,
   onDisconnect,
 }: SessionScreenProps) {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const breathAnim = useRef(new Animated.Value(1)).current;
+
+  const isActive = status === 'waiting' || status === 'working';
+
+  useEffect(() => {
+    if (!isActive) {
+      pulseAnim.setValue(1);
+      return;
+    }
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 0.4, duration: 750, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 750, useNativeDriver: true }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [isActive, pulseAnim]);
+
+  useEffect(() => {
+    if (pendingPermission) {
+      breathAnim.setValue(1);
+      return;
+    }
+    const breathe = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathAnim, { toValue: 1.03, duration: 2000, useNativeDriver: true }),
+        Animated.timing(breathAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+      ]),
+    );
+    breathe.start();
+    return () => breathe.stop();
+  }, [pendingPermission, breathAnim]);
+
   const statusColor =
     status === 'waiting'
       ? colors.waiting
@@ -42,19 +94,27 @@ export function SessionScreen({
       <View style={styles.header}>
         <Text style={styles.logo}>ClaudeBrew</Text>
         <View style={[styles.statusPill, { backgroundColor: statusColor + '1F' }]}>
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+          <Animated.View
+            style={[styles.statusDot, { backgroundColor: statusColor, opacity: pulseAnim }]}
+          />
           <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
         </View>
       </View>
 
       {/* Terminal output */}
-      <ScrollView style={styles.terminal} contentContainerStyle={styles.terminalContent}>
-        {outputLines.slice(-10).map((line, i) => (
-          <Text key={i} style={styles.terminalLine} numberOfLines={1}>
-            {line}
-          </Text>
-        ))}
-      </ScrollView>
+      {outputLines.length > 0 && (
+        <ScrollView style={styles.terminal} contentContainerStyle={styles.terminalContent}>
+          {outputLines.slice(-10).map((line, i) => (
+            <Text
+              key={i}
+              style={[styles.terminalLine, { color: getTerminalLineColor(line) }]}
+              numberOfLines={1}
+            >
+              {line}
+            </Text>
+          ))}
+        </ScrollView>
+      )}
 
       {/* Main content */}
       <View style={styles.content}>
@@ -70,7 +130,9 @@ export function SessionScreen({
           />
         ) : (
           <View style={styles.idle}>
-            <Text style={styles.idleIcon}>☕</Text>
+            <Animated.Text style={[styles.idleIcon, { transform: [{ scale: breathAnim }] }]}>
+              ☕
+            </Animated.Text>
             <Text style={styles.idleText}>Claude is working...{'\n'}enjoy your coffee</Text>
           </View>
         )}
@@ -101,7 +163,7 @@ function PermissionPrompt({
 
   return (
     <View style={styles.permissionCard}>
-      <Text style={styles.permissionLabel}>⚠️ Permission Request</Text>
+      <Text style={styles.permissionLabel}>PERMISSION REQUEST</Text>
       <Text style={styles.permissionTool}>{msg.tool}</Text>
       {inputPreview ? (
         <Text style={styles.permissionInput}>{inputPreview}</Text>
@@ -160,6 +222,8 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     borderRadius: radii.sm,
     padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.brewSurface,
   },
   terminalContent: {
     gap: 2,
@@ -167,7 +231,6 @@ const styles = StyleSheet.create({
   terminalLine: {
     fontFamily: typography.jetbrainsMono.regular,
     fontSize: 12,
-    color: colors.terminalMuted,
   },
   content: {
     flex: 1,
@@ -200,7 +263,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.jetbrainsMono.regular,
     fontSize: 10,
     color: colors.waiting,
-    letterSpacing: 1,
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
   permissionTool: {
@@ -242,5 +305,14 @@ const styles = StyleSheet.create({
     fontFamily: typography.jetbrainsMono.medium,
     fontSize: 14,
     color: colors.brewDark,
+  },
+  disconnect: {
+    alignItems: 'center',
+    paddingBottom: spacing.md,
+  },
+  disconnectText: {
+    fontFamily: typography.dmSans.light,
+    fontSize: 13,
+    color: colors.brewMuted,
   },
 });

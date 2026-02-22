@@ -13,6 +13,7 @@ interface PendingPermission {
 
 export interface SocketServer {
   on(event: 'hookEvent', listener: (hookEvent: HookEvent) => void): this;
+  on(event: 'permissionDismissed', listener: (sessionId: string, toolUseId: string) => void): this;
 }
 
 export class SocketServer extends EventEmitter {
@@ -73,9 +74,12 @@ export class SocketServer extends EventEmitter {
           socket,
         });
 
-        // Clean up if mobile never responds (socket closes)
+        // Clean up if mobile never responds (hook closed from terminal or timeout)
         socket.on('close', () => {
-          this.pending.delete(key);
+          if (this.pending.has(key)) {
+            this.pending.delete(key);
+            this.emit('permissionDismissed', event.sessionId, event.toolUseId);
+          }
         });
       } else {
         socket.end();

@@ -4,7 +4,8 @@
     "slug": "claudebrew",
     "version": "0.1.0",
     "orientation": "portrait",
-"userInterfaceStyle": "dark",
+    "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
       "backgroundColor": "#1C1410"
@@ -15,6 +16,7 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1C1410"
       },
       "package": "com.claudebrew.app"

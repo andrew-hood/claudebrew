@@ -9,3 +9,6 @@ build/
 .cache/
 .expo/
 .claude/
+.worktrees/
+
+app.json

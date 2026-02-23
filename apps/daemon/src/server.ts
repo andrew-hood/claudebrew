@@ -1,7 +1,22 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import { ServerMessage, ClientMessage, HookEvent, PermissionResponseMessage } from './types';
+import { homedir } from 'os';
+import path from 'path';
+import fs from 'fs';
+import { ServerMessage, ClientMessage, HookEvent, PermissionRequestMessage, PermissionResponseMessage } from './types';
 import { SocketServer } from './socket-server';
 import { log } from './logger';
+
+function readLatestPlan(): string | null {
+  const plansDir = path.join(homedir(), '.claude', 'plans');
+  try {
+    const files = fs.readdirSync(plansDir)
+      .filter(f => f.endsWith('.md'))
+      .map(f => ({ name: f, mtime: fs.statSync(path.join(plansDir, f)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);
+    if (!files.length) return null;
+    return fs.readFileSync(path.join(plansDir, files[0].name), 'utf-8').slice(0, 50_000);
+  } catch { return null; }
+}
 
 export class RemoteServer {
   private wss: WebSocketServer;
@@ -49,13 +64,23 @@ export class RemoteServer {
 
     socketServer.on('hookEvent', (hookEvent: HookEvent) => {
       if (hookEvent.expectsResponse && hookEvent.tool) {
-        this.broadcast({
+        const msg: PermissionRequestMessage = {
           type: 'permission_request',
           sessionId: hookEvent.sessionId,
           toolUseId: hookEvent.toolUseId!,
           tool: hookEvent.tool,
           toolInput: hookEvent.toolInput ?? {},
-        });
+        };
+        if (hookEvent.tool === 'ExitPlanMode') {
+          const planContent = readLatestPlan();
+          if (planContent) {
+            msg.planContent = planContent;
+            log(`[claudebrew] attached plan content (${planContent.length} chars)`);
+          } else {
+            log(`[claudebrew] no plan file found in ~/.claude/plans/`);
+          }
+        }
+        this.broadcast(msg);
       } else {
         this.broadcast({
           type: 'hook_event',

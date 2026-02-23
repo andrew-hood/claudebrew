@@ -1,0 +1,925 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClaudeBrew — Answer Claude Code prompts from your phone</title>
+    <meta
+      name="description"
+      content="Answer Claude Code prompts from your phone over local WiFi. No cloud, no accounts — just two devices on the same network."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ─── Design Tokens ─── */
+      :root {
+        --brew-dark: #1c1410;
+        --brew-rich: #2a1f17;
+        --brew-medium: #3d2e23;
+        --brew-surface: #4a382b;
+        --brew-muted: #6b5444;
+        --crema-light: #f5e6d3;
+        --crema: #e8d5bc;
+        --crema-dark: #c4a882;
+        --amber: #d4943a;
+        --gold: #e8aa4a;
+        --claude-light: #f0c87a;
+        --connected: #6bbf6a;
+        --working: #5ba4d9;
+        --offline: #c75b4a;
+      }
+
+      /* ─── Reset ─── */
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "DM Sans", sans-serif;
+        background: var(--brew-dark);
+        color: var(--crema-light);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .container {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      .gold {
+        color: var(--gold);
+      }
+
+      /* ─── Nav ─── */
+      nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        background: rgba(28, 20, 16, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--brew-surface);
+      }
+
+      nav .container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 60px;
+      }
+
+      .nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: "Fraunces", serif;
+        font-size: 20px;
+        font-weight: 700;
+      }
+
+      .nav-brand svg {
+        flex-shrink: 0;
+      }
+      .nav-brand .gold {
+        color: var(--gold);
+      }
+
+      .nav-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 20px;
+        border: 1.5px solid var(--amber);
+        border-radius: 100px;
+        color: var(--amber);
+        font-size: 14px;
+        font-weight: 600;
+        transition:
+          background 150ms,
+          color 150ms;
+      }
+
+      .nav-link:hover {
+        background: var(--amber);
+        color: var(--brew-dark);
+      }
+
+      /* ─── Hero ─── */
+      #hero {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 120px 24px 80px;
+        position: relative;
+      }
+
+      #hero::before {
+        content: "";
+        position: absolute;
+        top: 15%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(
+          circle,
+          rgba(212, 148, 58, 0.08) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+      }
+
+      .hero-logo {
+        position: relative;
+        margin-bottom: 32px;
+      }
+
+      .hero-logo svg {
+        filter: drop-shadow(0 0 24px rgba(212, 148, 58, 0.2));
+      }
+
+      .steam-particles {
+        position: absolute;
+        top: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 30px;
+        pointer-events: none;
+      }
+
+      .steam-particle {
+        position: absolute;
+        font-size: 14px;
+        color: var(--claude-light);
+        animation: steamFloat 2s ease-in-out infinite;
+      }
+
+      .steam-particle:nth-child(1) {
+        left: 10px;
+        animation-delay: 0s;
+      }
+      .steam-particle:nth-child(2) {
+        left: 28px;
+        animation-delay: 0.6s;
+      }
+      .steam-particle:nth-child(3) {
+        left: 46px;
+        animation-delay: 1.2s;
+      }
+
+      @keyframes steamFloat {
+        0%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.8;
+        }
+        50% {
+          transform: translateY(-8px);
+          opacity: 0.2;
+        }
+      }
+
+      #hero h1 {
+        font-family: "Fraunces", serif;
+        font-size: clamp(40px, 6vw, 56px);
+        font-weight: 700;
+        letter-spacing: -1px;
+        margin-bottom: 12px;
+      }
+
+      .hero-tagline {
+        font-family: "Fraunces", serif;
+        font-style: italic;
+        font-weight: 400;
+        font-size: clamp(16px, 2.5vw, 20px);
+        color: var(--crema-dark);
+        margin-bottom: 20px;
+      }
+
+      .hero-sub {
+        font-size: clamp(15px, 2vw, 17px);
+        color: var(--crema);
+        max-width: 520px;
+        margin-bottom: 36px;
+        line-height: 1.7;
+      }
+
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 32px;
+        background: var(--amber);
+        color: var(--brew-dark);
+        font-family: "DM Sans", sans-serif;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 100px;
+        border: none;
+        cursor: pointer;
+        transition:
+          background 150ms,
+          transform 150ms;
+      }
+
+      .btn-primary:hover {
+        background: var(--gold);
+        transform: scale(1.02);
+      }
+
+      /* ─── Sections Common ─── */
+      section {
+        padding: 80px 0;
+      }
+
+      .section-heading {
+        font-family: "Fraunces", serif;
+        font-size: clamp(28px, 4vw, 36px);
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 48px;
+      }
+
+      /* Scroll fade-in */
+      .fade-in {
+        opacity: 0;
+        transform: translateY(20px);
+        transition:
+          opacity 0.6s ease,
+          transform 0.6s ease;
+      }
+
+      .fade-in.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* ─── How It Works ─── */
+      .steps-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+      }
+
+      .step-card {
+        background: var(--brew-rich);
+        border: 1px solid var(--brew-surface);
+        border-radius: 16px;
+        padding: 28px 24px;
+      }
+
+      .step-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: var(--amber);
+        color: var(--brew-dark);
+        font-family: "Fraunces", serif;
+        font-weight: 700;
+        font-size: 16px;
+        border-radius: 50%;
+        margin-bottom: 16px;
+      }
+
+      .step-card h3 {
+        font-family: "Fraunces", serif;
+        font-size: 17px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      .step-card p {
+        font-size: 14px;
+        color: var(--crema-dark);
+        line-height: 1.5;
+      }
+
+      /* ─── Features ─── */
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+      }
+
+      .feature-card {
+        background: var(--brew-rich);
+        border: 1px solid var(--brew-surface);
+        border-top: 3px solid var(--amber);
+        border-radius: 16px;
+        padding: 32px 24px;
+      }
+
+      .feature-icon {
+        font-size: 28px;
+        margin-bottom: 16px;
+        display: block;
+      }
+
+      .feature-card h3 {
+        font-family: "Fraunces", serif;
+        font-size: 19px;
+        font-weight: 600;
+        margin-bottom: 10px;
+      }
+
+      .feature-card p {
+        font-size: 14px;
+        color: var(--crema-dark);
+        line-height: 1.6;
+      }
+
+      /* ─── Phone Mockup ─── */
+      #demo {
+        text-align: center;
+      }
+
+      .phone-frame {
+        display: inline-block;
+        width: 280px;
+        background: var(--brew-rich);
+        border: 2px solid var(--brew-surface);
+        border-radius: 36px;
+        padding: 16px;
+        box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+        text-align: left;
+      }
+
+      .phone-notch {
+        width: 100px;
+        height: 6px;
+        background: var(--brew-surface);
+        border-radius: 3px;
+        margin: 0 auto 16px;
+      }
+
+      .phone-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--brew-surface);
+      }
+
+      .phone-header-title {
+        font-family: "Fraunces", serif;
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px;
+        background: rgba(212, 148, 58, 0.15);
+        border-radius: 100px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10px;
+        font-weight: 500;
+        color: var(--amber);
+        text-transform: uppercase;
+      }
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        background: var(--amber);
+        border-radius: 50%;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+
+      .phone-terminal {
+        background: var(--brew-medium);
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 12px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        line-height: 1.7;
+      }
+
+      .phone-terminal .line-muted {
+        color: var(--brew-muted);
+      }
+      .phone-terminal .line-blue {
+        color: var(--working);
+      }
+      .phone-terminal .line-green {
+        color: var(--connected);
+      }
+
+      .phone-permission {
+        border: 1.5px dashed var(--amber);
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+
+      .phone-permission-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10px;
+        color: var(--crema-dark);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 6px;
+      }
+
+      .phone-permission-tool {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--crema-light);
+        margin-bottom: 10px;
+      }
+
+      .phone-btns {
+        display: flex;
+        gap: 8px;
+      }
+
+      .phone-btn {
+        flex: 1;
+        padding: 6px 0;
+        border-radius: 8px;
+        font-family: "DM Sans", sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        text-align: center;
+        border: none;
+      }
+
+      .phone-btn-allow {
+        background: var(--amber);
+        color: var(--brew-dark);
+      }
+
+      .phone-btn-deny {
+        background: var(--brew-surface);
+        color: var(--crema-dark);
+      }
+
+      .phone-home {
+        width: 40px;
+        height: 4px;
+        background: var(--brew-surface);
+        border-radius: 2px;
+        margin: 12px auto 0;
+      }
+
+      /* ─── Install ─── */
+      .install-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+        max-width: 800px;
+        margin: 0 auto 24px;
+      }
+
+      .install-block h3 {
+        font-family: "Fraunces", serif;
+        font-size: 17px;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+
+      .code-block {
+        background: var(--brew-medium);
+        border: 1px solid var(--brew-surface);
+        border-radius: 12px;
+        padding: 20px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+        line-height: 1.8;
+        color: var(--crema);
+        overflow-x: auto;
+      }
+
+      .code-block .comment {
+        color: var(--brew-muted);
+      }
+      .code-block .cmd {
+        color: var(--crema-light);
+      }
+
+      .install-note {
+        text-align: center;
+        font-size: 14px;
+        color: var(--crema-dark);
+        font-style: italic;
+      }
+
+      /* ─── Footer ─── */
+      footer {
+        border-top: 1px solid var(--brew-surface);
+        padding: 40px 0;
+      }
+
+      footer .container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+
+      .footer-brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: "Fraunces", serif;
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .footer-brand .gold {
+        color: var(--gold);
+      }
+
+      .footer-meta {
+        font-size: 13px;
+        color: var(--crema-dark);
+      }
+
+      .footer-link {
+        color: var(--amber);
+        transition: color 150ms;
+      }
+
+      .footer-link:hover {
+        color: var(--gold);
+      }
+
+      /* ─── Responsive ─── */
+      @media (max-width: 860px) {
+        .steps-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .features-grid {
+          grid-template-columns: 1fr;
+          max-width: 480px;
+          margin: 0 auto;
+        }
+        .install-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .steps-grid {
+          grid-template-columns: 1fr;
+          max-width: 400px;
+          margin: 0 auto;
+        }
+        nav .container {
+          height: 52px;
+        }
+        .nav-brand {
+          font-size: 17px;
+        }
+        .nav-link {
+          padding: 6px 14px;
+          font-size: 13px;
+        }
+      }
+
+      /* ─── Reduce Motion ─── */
+      @media (prefers-reduced-motion: reduce) {
+        .steam-particle,
+        .status-dot {
+          animation: none;
+        }
+        .fade-in {
+          opacity: 1;
+          transform: none;
+          transition: none;
+        }
+        .btn-primary {
+          transition: none;
+        }
+        .nav-link {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ─── Nav ─── -->
+    <nav>
+      <div class="container">
+        <div class="nav-brand">
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 80 80"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect width="80" height="80" rx="18" fill="url(#nav-grad)" />
+            <text
+              x="40"
+              y="52"
+              text-anchor="middle"
+              font-size="38"
+              fill="white"
+            >
+              &#9749;
+            </text>
+            <text
+              x="56"
+              y="28"
+              text-anchor="middle"
+              font-size="16"
+              fill="white"
+              opacity="0.9"
+            >
+              &#10022;
+            </text>
+            <defs>
+              <linearGradient id="nav-grad" x1="0" y1="0" x2="80" y2="80">
+                <stop stop-color="#D4943A" />
+                <stop offset="1" stop-color="#E8AA4A" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <span>Claude<span class="gold">Brew</span></span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px">
+          <a href="design-guide.html" class="nav-link">Design Guide</a>
+          <a
+            href="https://github.com/ahood/claudebrew"
+            class="nav-link"
+            target="_blank"
+            rel="noopener"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path
+                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"
+              />
+            </svg>
+            GitHub
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ─── Hero ─── -->
+    <section id="hero">
+      <div class="hero-logo">
+        <svg
+          width="96"
+          height="96"
+          viewBox="0 0 80 80"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <rect width="80" height="80" rx="18" fill="url(#hero-grad)" />
+          <text x="40" y="52" text-anchor="middle" font-size="38" fill="white">
+            &#9749;
+          </text>
+          <text
+            x="56"
+            y="28"
+            text-anchor="middle"
+            font-size="16"
+            fill="white"
+            opacity="0.9"
+          >
+            &#10022;
+          </text>
+          <defs>
+            <linearGradient id="hero-grad" x1="0" y1="0" x2="80" y2="80">
+              <stop stop-color="#D4943A" />
+              <stop offset="1" stop-color="#E8AA4A" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="steam-particles">
+          <span class="steam-particle">&#10022;</span>
+          <span class="steam-particle">&#10022;</span>
+          <span class="steam-particle">&#10022;</span>
+        </div>
+      </div>
+      <h1>Claude<span class="gold">Brew</span></h1>
+      <p class="hero-tagline">Brewing answers while you brew coffee</p>
+      <p class="hero-sub">
+        Answer Claude Code prompts from your phone over local WiFi. No cloud, no
+        accounts&nbsp;&mdash; just two devices on the same network.
+      </p>
+      <a
+        href="https://github.com/ahood/claudebrew"
+        class="btn-primary"
+        target="_blank"
+        rel="noopener"
+      >
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
+          <path
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"
+          />
+        </svg>
+        View on GitHub
+      </a>
+    </section>
+
+    <!-- ─── How It Works ─── -->
+    <section id="how" class="fade-in">
+      <div class="container">
+        <h2 class="section-heading">How it works</h2>
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-num">1</div>
+            <h3>Start the daemon</h3>
+            <p>
+              Run the daemon on your Mac. Hooks install automatically and a QR
+              code is printed in the terminal.
+            </p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">2</div>
+            <h3>Scan &amp; connect</h3>
+            <p>
+              Open the mobile app and scan the QR code, or manually enter the IP
+              address and PIN.
+            </p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">3</div>
+            <h3>Requests stream live</h3>
+            <p>
+              Claude Code tool use requests and terminal output stream to your
+              phone in real time.
+            </p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">4</div>
+            <h3>Approve from anywhere</h3>
+            <p>
+              Approve or deny permissions with a tap &mdash; from the couch, the
+              kitchen, wherever you are.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Phone Mockup ─── -->
+    <section id="demo" class="fade-in">
+      <div class="container">
+        <h2 class="section-heading">Your phone, your terminal</h2>
+        <div class="phone-frame">
+          <div class="phone-notch"></div>
+          <div class="phone-header">
+            <span class="phone-header-title"
+              >Claude<span class="gold">Brew</span></span
+            >
+            <span class="status-pill"
+              ><span class="status-dot"></span>Waiting</span
+            >
+          </div>
+          <div class="phone-terminal">
+            <div class="line-muted">$ claude "add login form"</div>
+            <div class="line-blue">Reading src/App.tsx...</div>
+            <div class="line-blue">Analyzing auth patterns...</div>
+            <div class="line-green">&#10003; Created LoginForm.tsx</div>
+          </div>
+          <div class="phone-permission">
+            <div class="phone-permission-label">Permission Request</div>
+            <div class="phone-permission-tool">
+              Write &rarr; src/LoginForm.tsx
+            </div>
+            <div class="phone-btns">
+              <div class="phone-btn phone-btn-allow">Allow</div>
+              <div class="phone-btn phone-btn-deny">Deny</div>
+            </div>
+          </div>
+          <div class="phone-home"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Install ─── -->
+    <section id="install" class="fade-in">
+      <div class="container">
+        <h2 class="section-heading">Quick setup</h2>
+        <div class="install-grid">
+          <div class="install-block">
+            <h3>Daemon (Mac)</h3>
+            <div class="code-block">
+              <span class="comment"># Install and start</span><br />
+              <span class="cmd">cd apps/daemon</span><br />
+              <span class="cmd">npm install</span><br />
+              <span class="cmd">npm run build</span><br />
+              <span class="cmd">npm start</span>
+            </div>
+          </div>
+          <div class="install-block">
+            <h3>Mobile (Expo)</h3>
+            <div class="code-block">
+              <span class="comment"># Start the dev server</span><br />
+              <span class="cmd">cd apps/mobile</span><br />
+              <span class="cmd">npm install</span><br />
+              <span class="cmd">npm start</span>
+            </div>
+          </div>
+        </div>
+        <p class="install-note">
+          No configuration needed &mdash; hooks install automatically on first
+          run.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─── Footer ─── -->
+    <footer>
+      <div class="container">
+        <div class="footer-brand">
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 80 80"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect width="80" height="80" rx="18" fill="url(#foot-grad)" />
+            <text
+              x="40"
+              y="52"
+              text-anchor="middle"
+              font-size="38"
+              fill="white"
+            >
+              &#9749;
+            </text>
+            <defs>
+              <linearGradient id="foot-grad" x1="0" y1="0" x2="80" y2="80">
+                <stop stop-color="#D4943A" />
+                <stop offset="1" stop-color="#E8AA4A" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <span>Claude<span class="gold">Brew</span></span>
+        </div>
+        <span class="footer-meta">MIT License &middot; Built with &#9749;</span>
+        <a
+          href="https://github.com/ahood/claudebrew"
+          class="footer-link"
+          target="_blank"
+          rel="noopener"
+          >GitHub</a
+        >
+      </div>
+    </footer>
+
+    <!-- ─── Scroll Fade-In ─── -->
+    <script>
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("visible");
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.15 },
+      );
+      document
+        .querySelectorAll(".fade-in")
+        .forEach((el) => observer.observe(el));
+    </script>
+  </body>
+</html>

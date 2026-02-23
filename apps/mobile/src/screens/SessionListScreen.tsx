@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { colors, spacing, radii, typography } from "../theme/tokens";
-import { SessionState, isAskUserQuestion } from "../types/protocol";
+import { SessionState, isAskUserQuestion, isExitPlanMode } from "../types/protocol";
 
 const SWIPE_THRESHOLD = 80;
 
@@ -119,17 +119,21 @@ function ActionCard({
   const hasTriggeredHaptic = useRef(false);
   const perm = session.pendingPermission!;
   const isQuestion = isAskUserQuestion(perm);
+  const isPlan = isExitPlanMode(perm);
+  const needsDetailScreen = isQuestion || isPlan;
 
-  const inputPreview = isQuestion
-    ? ((perm.toolInput as any)?.questions as any[])
-        ?.map((q: any) => q.question)
-        .join("; ")
-        .slice(0, 120) ?? null
-    : perm.toolInput
-      ? Object.entries(perm.toolInput)
-          .map(([k, v]) => `${k}: ${String(v).slice(0, 60)}`)
-          .join("\n")
-      : null;
+  const inputPreview = isPlan
+    ? (perm.planContent?.slice(0, 120) ?? null)
+    : isQuestion
+      ? (((perm.toolInput as any)?.questions as any[])
+          ?.map((q: any) => q.question)
+          .join("; ")
+          .slice(0, 120) ?? null)
+      : perm.toolInput
+        ? Object.entries(perm.toolInput)
+            .map(([k, v]) => `${k}: ${String(v).slice(0, 60)}`)
+            .join("\n")
+        : null;
 
   const respond = useCallback(
     (decision: "allow" | "deny") => {
@@ -141,17 +145,15 @@ function ActionCard({
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gs) =>
-        !isQuestion &&
-        Math.abs(gs.dx) > 10 && Math.abs(gs.dx) > Math.abs(gs.dy),
+        !needsDetailScreen &&
+        Math.abs(gs.dx) > 10 &&
+        Math.abs(gs.dx) > Math.abs(gs.dy),
       onPanResponderGrant: () => {
         hasTriggeredHaptic.current = false;
       },
       onPanResponderMove: (_, gs) => {
         translateX.setValue(gs.dx);
-        if (
-          !hasTriggeredHaptic.current &&
-          Math.abs(gs.dx) >= SWIPE_THRESHOLD
-        ) {
+        if (!hasTriggeredHaptic.current && Math.abs(gs.dx) >= SWIPE_THRESHOLD) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           hasTriggeredHaptic.current = true;
         }
@@ -204,13 +206,15 @@ function ActionCard({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={
-        isQuestion
-          ? `Question from ${session.label}. Tap to answer.`
-          : `Permission request: ${session.label} wants to use ${perm.tool}. Swipe right to allow, left to deny.`
+        isPlan
+          ? `Plan review for ${session.label}. Tap to review.`
+          : isQuestion
+            ? `Question from ${session.label}. Tap to answer.`
+            : `Permission request: ${session.label} wants to use ${perm.tool}. Swipe right to allow, left to deny.`
       }
     >
       <View style={aStyles.swipeContainer}>
-        {!isQuestion && (
+        {!needsDetailScreen && (
           <>
             <Animated.View
               style={[aStyles.revealAllow, { opacity: allowOpacity }]}
@@ -227,17 +231,17 @@ function ActionCard({
           </>
         )}
         <Animated.View
-          style={[aStyles.card, !isQuestion && { transform: [{ translateX }] }]}
-          {...(!isQuestion ? panResponder.panHandlers : {})}
+          style={[aStyles.card, !needsDetailScreen && { transform: [{ translateX }] }]}
+          {...(!needsDetailScreen ? panResponder.panHandlers : {})}
         >
           <View style={aStyles.topRow}>
             <Text style={aStyles.requestLabel}>
-              {isQuestion ? "QUESTION" : "PERMISSION REQUEST"}
+              {isPlan ? "PLAN REVIEW" : isQuestion ? "QUESTION" : "PERMISSION REQUEST"}
             </Text>
             <Text style={aStyles.sessionMeta}>{session.label}</Text>
           </View>
           <Text style={aStyles.toolName}>
-            {isQuestion ? "Claude has a question" : perm.tool}
+            {isPlan ? "Review plan" : isQuestion ? "Claude has a question" : perm.tool}
           </Text>
           {inputPreview && (
             <View style={aStyles.inputBlock}>
@@ -251,8 +255,10 @@ function ActionCard({
               📁 {session.cwd}
             </Text>
           )}
-          {isQuestion ? (
-            <Text style={aStyles.swipeHint}>tap to answer</Text>
+          {needsDetailScreen ? (
+            <Text style={aStyles.swipeHint}>
+              {isPlan ? "tap to review" : "tap to answer"}
+            </Text>
           ) : (
             <View style={aStyles.buttons}>
               <TouchableOpacity
@@ -407,11 +413,7 @@ function CompactRow({
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const statusGlyph =
-    session.status === "working"
-      ? "◉"
-      : session.status === "done"
-        ? "✓"
-        : "○";
+    session.status === "working" ? "◉" : session.status === "done" ? "✓" : "○";
   const statusColor =
     session.status === "working"
       ? colors.working
@@ -542,9 +544,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: spacing.md,
-    paddingTop:
-      (Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 0) +
-      spacing.sm,
     paddingBottom: spacing.sm,
   },
   headerRight: {

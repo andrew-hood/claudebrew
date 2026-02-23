@@ -35,6 +35,7 @@ export interface PermissionRequestMessage {
   toolUseId: string;
   tool: string;
   toolInput: Record<string, unknown>;
+  planContent?: string;
 }
 
 export interface PermissionResponseMessage {
@@ -66,6 +67,10 @@ export interface AskUserQuestion {
 
 export function isAskUserQuestion(msg: PermissionRequestMessage): boolean {
   return msg.tool === 'AskUserQuestion' && Array.isArray((msg.toolInput as any)?.questions);
+}
+
+export function isExitPlanMode(msg: PermissionRequestMessage): boolean {
+  return msg.tool === 'ExitPlanMode';
 }
 
 export type ServerMessage = OutputMessage | StatusMessage | PairOkMessage | HookEventMessage | PermissionRequestMessage | PermissionDismissedMessage;

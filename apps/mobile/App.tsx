@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { SafeAreaView, StyleSheet, Animated } from 'react-native';
+import { StyleSheet, Animated } from 'react-native';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
@@ -15,7 +16,6 @@ SplashScreen.preventAutoHideAsync();
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
     shouldShowBanner: true,
@@ -97,33 +97,35 @@ export default function App() {
     : null;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
-      <Animated.View style={[styles.screenWrapper, { opacity: fadeAnim }]}>
-        {connection.state === 'connected' ? (
-          selectedSession ? (
-            <SessionDetailScreen
-              session={selectedSession}
-              onPermissionResponse={connection.sendPermissionResponse}
-              onBack={() => setSelectedSessionId(null)}
-            />
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="light" />
+        <Animated.View style={[styles.screenWrapper, { opacity: fadeAnim }]}>
+          {connection.state === 'connected' ? (
+            selectedSession ? (
+              <SessionDetailScreen
+                session={selectedSession}
+                onPermissionResponse={connection.sendPermissionResponse}
+                onBack={() => setSelectedSessionId(null)}
+              />
+            ) : (
+              <SessionListScreen
+                sessions={connection.sessions}
+                onSelectSession={setSelectedSessionId}
+                onDisconnect={connection.disconnect}
+                onPermissionResponse={connection.sendPermissionResponse}
+              />
+            )
           ) : (
-            <SessionListScreen
-              sessions={connection.sessions}
-              onSelectSession={setSelectedSessionId}
-              onDisconnect={connection.disconnect}
-              onPermissionResponse={connection.sendPermissionResponse}
+            <ConnectScreen
+              connecting={connection.state === 'connecting'}
+              onConnect={connection.connectTo}
+              initialIp={connection.ip}
             />
-          )
-        ) : (
-          <ConnectScreen
-            connecting={connection.state === 'connecting'}
-            onConnect={connection.connectTo}
-            initialIp={connection.ip}
-          />
-        )}
-      </Animated.View>
-    </SafeAreaView>
+          )}
+        </Animated.View>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 

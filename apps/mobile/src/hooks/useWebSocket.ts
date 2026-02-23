@@ -155,11 +155,13 @@ export function useWebSocket(url: string | null, pin: string) {
     wsRef.current = ws;
 
     ws.onopen = () => {
+      if (wsRef.current !== ws) return;
       dispatch({ type: 'connected' });
       ws.send(JSON.stringify({ type: 'pair', pin }));
     };
 
     ws.onmessage = (event) => {
+      if (wsRef.current !== ws) return;
       try {
         const msg: ServerMessage = JSON.parse(event.data as string);
         switch (msg.type) {
@@ -198,6 +200,7 @@ export function useWebSocket(url: string | null, pin: string) {
     };
 
     ws.onclose = () => {
+      if (wsRef.current !== ws) return;
       dispatch({ type: 'disconnected' });
       wsRef.current = null;
       reconnectRef.current = setTimeout(connect, RECONNECT_DELAY);

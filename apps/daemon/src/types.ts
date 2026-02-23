@@ -35,6 +35,7 @@ export interface PermissionRequestMessage {
   toolUseId: string;
   tool: string;
   toolInput: Record<string, unknown>;
+  planContent?: string;
 }
 
 export interface PermissionResponseMessage {

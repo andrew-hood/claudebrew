@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import { SessionState } from '../types/protocol';
@@ -19,16 +20,18 @@ export function usePermissionNotifications(sessions: SessionState[]) {
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
-      Notifications.scheduleNotificationAsync({
-        identifier: perm.toolUseId,
-        content: {
-          title: 'ClaudeBrew',
-          body: `Claude wants to use ${perm.tool} — tap to respond`,
-          data: { sessionId: session.sessionId, toolUseId: perm.toolUseId },
-          sound: true,
-        },
-        trigger: null,
-      });
+      if (AppState.currentState !== 'active') {
+        Notifications.scheduleNotificationAsync({
+          identifier: perm.toolUseId,
+          content: {
+            title: 'ClaudeBrew',
+            body: `Claude wants to use ${perm.tool} — tap to respond`,
+            data: { sessionId: session.sessionId, toolUseId: perm.toolUseId },
+            sound: true,
+          },
+          trigger: null,
+        });
+      }
     }
 
     for (const id of scheduledIds.current) {

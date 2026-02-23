@@ -12,7 +12,12 @@ import {
   AccessibilityInfo,
 } from "react-native";
 import { colors, spacing, radii, typography } from "../theme/tokens";
-import { PermissionRequestMessage, SessionState } from "../types/protocol";
+import {
+  PermissionRequestMessage,
+  SessionState,
+  isAskUserQuestion,
+} from "../types/protocol";
+import { QuestionPrompt } from "../components/QuestionPrompt";
 
 interface SessionDetailScreenProps {
   session: SessionState;
@@ -20,6 +25,7 @@ interface SessionDetailScreenProps {
     sessionId: string,
     toolUseId: string,
     decision: "allow" | "deny",
+    reason?: string,
   ) => void;
   onBack: () => void;
 }
@@ -59,7 +65,10 @@ export function SessionDetailScreen({
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    const sub = AccessibilityInfo.addEventListener(
+      "reduceMotionChanged",
+      setReduceMotion,
+    );
     return () => sub.remove();
   }, []);
 
@@ -181,7 +190,10 @@ export function SessionDetailScreen({
           <Animated.View
             style={[
               styles.statusDot,
-              { backgroundColor: statusColor, opacity: reduceMotion ? 1 : pulseAnim },
+              {
+                backgroundColor: statusColor,
+                opacity: reduceMotion ? 1 : pulseAnim,
+              },
             ]}
             accessibilityElementsHidden
           />
@@ -217,7 +229,9 @@ export function SessionDetailScreen({
           >
             {terminalLines.map((line, i) => {
               const showDivider =
-                isToolHeader(line) && i > 0 && !isToolHeader(terminalLines[i - 1]);
+                isToolHeader(line) &&
+                i > 0 &&
+                !isToolHeader(terminalLines[i - 1]);
               return (
                 <View key={i}>
                   {showDivider && <View style={styles.terminalDivider} />}
@@ -244,7 +258,9 @@ export function SessionDetailScreen({
             accessibilityLabel={`Terminal output, ${session.outputLines.length} lines. ${terminalExpanded ? "Collapse" : "Expand"}`}
           >
             <Text style={styles.terminalToggle}>
-              {terminalExpanded ? "▲ Collapse" : `▼ ${session.outputLines.length} lines`}
+              {terminalExpanded
+                ? "▲ Collapse"
+                : `▼ ${session.outputLines.length} lines`}
             </Text>
           </TouchableOpacity>
         </View>
@@ -263,23 +279,44 @@ export function SessionDetailScreen({
                   }
             }
           >
-            <PermissionPrompt
-              msg={session.pendingPermission}
-              onAllow={() =>
-                onPermissionResponse(
-                  session.pendingPermission!.sessionId,
-                  session.pendingPermission!.toolUseId,
-                  "allow",
-                )
-              }
-              onDeny={() =>
-                onPermissionResponse(
-                  session.pendingPermission!.sessionId,
-                  session.pendingPermission!.toolUseId,
-                  "deny",
-                )
-              }
-            />
+            {isAskUserQuestion(session.pendingPermission) ? (
+              <QuestionPrompt
+                msg={session.pendingPermission}
+                onSubmit={(reason) =>
+                  onPermissionResponse(
+                    session.pendingPermission!.sessionId,
+                    session.pendingPermission!.toolUseId,
+                    "deny",
+                    reason,
+                  )
+                }
+                onSkip={() =>
+                  onPermissionResponse(
+                    session.pendingPermission!.sessionId,
+                    session.pendingPermission!.toolUseId,
+                    "deny",
+                  )
+                }
+              />
+            ) : (
+              <PermissionPrompt
+                msg={session.pendingPermission}
+                onAllow={() =>
+                  onPermissionResponse(
+                    session.pendingPermission!.sessionId,
+                    session.pendingPermission!.toolUseId,
+                    "allow",
+                  )
+                }
+                onDeny={() =>
+                  onPermissionResponse(
+                    session.pendingPermission!.sessionId,
+                    session.pendingPermission!.toolUseId,
+                    "deny",
+                  )
+                }
+              />
+            )}
           </Animated.View>
         ) : (
           <View style={styles.idle}>

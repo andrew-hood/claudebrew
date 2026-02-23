@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { colors, spacing, radii, typography } from "../theme/tokens";
-import { SessionState } from "../types/protocol";
+import { SessionState, isAskUserQuestion } from "../types/protocol";
 
 const SWIPE_THRESHOLD = 80;
 
@@ -25,6 +25,7 @@ interface Props {
     sessionId: string,
     toolUseId: string,
     decision: "allow" | "deny",
+    reason?: string,
   ) => void;
 }
 
@@ -111,17 +112,24 @@ function ActionCard({
     sessionId: string,
     toolUseId: string,
     decision: "allow" | "deny",
+    reason?: string,
   ) => void;
 }) {
   const translateX = useRef(new Animated.Value(0)).current;
   const hasTriggeredHaptic = useRef(false);
   const perm = session.pendingPermission!;
+  const isQuestion = isAskUserQuestion(perm);
 
-  const inputPreview = perm.toolInput
-    ? Object.entries(perm.toolInput)
-        .map(([k, v]) => `${k}: ${String(v).slice(0, 60)}`)
-        .join("\n")
-    : null;
+  const inputPreview = isQuestion
+    ? ((perm.toolInput as any)?.questions as any[])
+        ?.map((q: any) => q.question)
+        .join("; ")
+        .slice(0, 120) ?? null
+    : perm.toolInput
+      ? Object.entries(perm.toolInput)
+          .map(([k, v]) => `${k}: ${String(v).slice(0, 60)}`)
+          .join("\n")
+      : null;
 
   const respond = useCallback(
     (decision: "allow" | "deny") => {
@@ -133,6 +141,7 @@ function ActionCard({
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gs) =>
+        !isQuestion &&
         Math.abs(gs.dx) > 10 && Math.abs(gs.dx) > Math.abs(gs.dy),
       onPanResponderGrant: () => {
         hasTriggeredHaptic.current = false;
@@ -194,30 +203,42 @@ function ActionCard({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Permission request: ${session.label} wants to use ${perm.tool}. Swipe right to allow, left to deny.`}
+      accessibilityLabel={
+        isQuestion
+          ? `Question from ${session.label}. Tap to answer.`
+          : `Permission request: ${session.label} wants to use ${perm.tool}. Swipe right to allow, left to deny.`
+      }
     >
       <View style={aStyles.swipeContainer}>
+        {!isQuestion && (
+          <>
+            <Animated.View
+              style={[aStyles.revealAllow, { opacity: allowOpacity }]}
+              accessibilityElementsHidden
+            >
+              <Text style={aStyles.revealText}>✓ Allow</Text>
+            </Animated.View>
+            <Animated.View
+              style={[aStyles.revealDeny, { opacity: denyOpacity }]}
+              accessibilityElementsHidden
+            >
+              <Text style={aStyles.revealText}>✗ Deny</Text>
+            </Animated.View>
+          </>
+        )}
         <Animated.View
-          style={[aStyles.revealAllow, { opacity: allowOpacity }]}
-          accessibilityElementsHidden
-        >
-          <Text style={aStyles.revealText}>✓ Allow</Text>
-        </Animated.View>
-        <Animated.View
-          style={[aStyles.revealDeny, { opacity: denyOpacity }]}
-          accessibilityElementsHidden
-        >
-          <Text style={aStyles.revealText}>✗ Deny</Text>
-        </Animated.View>
-        <Animated.View
-          style={[aStyles.card, { transform: [{ translateX }] }]}
-          {...panResponder.panHandlers}
+          style={[aStyles.card, !isQuestion && { transform: [{ translateX }] }]}
+          {...(!isQuestion ? panResponder.panHandlers : {})}
         >
           <View style={aStyles.topRow}>
-            <Text style={aStyles.requestLabel}>PERMISSION REQUEST</Text>
+            <Text style={aStyles.requestLabel}>
+              {isQuestion ? "QUESTION" : "PERMISSION REQUEST"}
+            </Text>
             <Text style={aStyles.sessionMeta}>{session.label}</Text>
           </View>
-          <Text style={aStyles.toolName}>{perm.tool}</Text>
+          <Text style={aStyles.toolName}>
+            {isQuestion ? "Claude has a question" : perm.tool}
+          </Text>
           {inputPreview && (
             <View style={aStyles.inputBlock}>
               <Text style={aStyles.inputText} numberOfLines={3}>
@@ -230,24 +251,28 @@ function ActionCard({
               📁 {session.cwd}
             </Text>
           )}
-          <View style={aStyles.buttons}>
-            <TouchableOpacity
-              style={[aStyles.btn, aStyles.denyBtn]}
-              onPress={() => respond("deny")}
-              accessibilityRole="button"
-              accessibilityLabel={`Deny ${perm.tool}`}
-            >
-              <Text style={aStyles.denyText}>Deny</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[aStyles.btn, aStyles.allowBtn]}
-              onPress={() => respond("allow")}
-              accessibilityRole="button"
-              accessibilityLabel={`Allow ${perm.tool}`}
-            >
-              <Text style={aStyles.allowText}>Allow</Text>
-            </TouchableOpacity>
-          </View>
+          {isQuestion ? (
+            <Text style={aStyles.swipeHint}>tap to answer</Text>
+          ) : (
+            <View style={aStyles.buttons}>
+              <TouchableOpacity
+                style={[aStyles.btn, aStyles.denyBtn]}
+                onPress={() => respond("deny")}
+                accessibilityRole="button"
+                accessibilityLabel={`Deny ${perm.tool}`}
+              >
+                <Text style={aStyles.denyText}>Deny</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[aStyles.btn, aStyles.allowBtn]}
+                onPress={() => respond("allow")}
+                accessibilityRole="button"
+                accessibilityLabel={`Allow ${perm.tool}`}
+              >
+                <Text style={aStyles.allowText}>Allow</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </Animated.View>
       </View>
     </Pressable>
@@ -362,6 +387,13 @@ const aStyles = StyleSheet.create({
     fontFamily: typography.jetbrainsMono.medium,
     fontSize: 14,
     color: colors.brewDark,
+  },
+  swipeHint: {
+    fontFamily: typography.dmSans.light,
+    fontSize: 13,
+    color: colors.claudeAmber,
+    textAlign: "center",
+    paddingVertical: spacing.xs,
   },
 });
 

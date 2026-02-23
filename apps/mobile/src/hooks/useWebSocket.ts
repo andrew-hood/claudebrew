@@ -227,8 +227,8 @@ export function useWebSocket(url: string | null, pin: string) {
   }, []);
 
   const sendPermissionResponse = useCallback(
-    (sessionId: string, toolUseId: string, decision: 'allow' | 'deny') => {
-      send({ type: 'permission_response', sessionId, toolUseId, decision });
+    (sessionId: string, toolUseId: string, decision: 'allow' | 'deny', reason?: string) => {
+      send({ type: 'permission_response', sessionId, toolUseId, decision, ...(reason && { reason }) });
       dispatch({ type: 'clear_permission', sessionId, toolUseId });
     },
     [send],

@@ -51,6 +51,23 @@ export interface PermissionDismissedMessage {
   toolUseId: string;
 }
 
+export interface AskUserQuestionOption {
+  label: string;
+  description: string;
+  markdown?: string;
+}
+
+export interface AskUserQuestion {
+  question: string;
+  header: string;
+  options: AskUserQuestionOption[];
+  multiSelect: boolean;
+}
+
+export function isAskUserQuestion(msg: PermissionRequestMessage): boolean {
+  return msg.tool === 'AskUserQuestion' && Array.isArray((msg.toolInput as any)?.questions);
+}
+
 export type ServerMessage = OutputMessage | StatusMessage | PairOkMessage | HookEventMessage | PermissionRequestMessage | PermissionDismissedMessage;
 export type ClientMessage = PairMessage | PermissionResponseMessage;
 

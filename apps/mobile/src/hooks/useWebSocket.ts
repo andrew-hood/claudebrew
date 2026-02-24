@@ -7,12 +7,15 @@ const RECONNECT_DELAY = 2000;
 interface State {
   sessions: Map<string, SessionState>;
   connected: boolean;
+  debugLog: string[];
+  lastCloseCode: number | null;
 }
 
 type Action =
   | { type: 'connected' }
-  | { type: 'disconnected' }
+  | { type: 'disconnected'; code?: number }
   | { type: 'pair_ok' }
+  | { type: 'debug'; msg: string }
   | {
       type: 'hook_activity';
       sessionId: string;
@@ -41,14 +44,24 @@ function getOrCreate(sessions: Map<string, SessionState>, sessionId: string, cwd
   };
 }
 
+const MAX_DEBUG = 20;
+
+function addDebug(state: State, msg: string): string[] {
+  const log = [...state.debugLog, `${new Date().toLocaleTimeString()} ${msg}`];
+  if (log.length > MAX_DEBUG) log.shift();
+  return log;
+}
+
 function reducer(state: State, action: Action): State {
   switch (action.type) {
+    case 'debug':
+      return { ...state, debugLog: addDebug(state, action.msg) };
     case 'connected':
-      return state;
+      return { ...state, debugLog: addDebug(state, 'WS opened') };
     case 'disconnected':
-      return { sessions: new Map(), connected: false };
+      return { sessions: new Map(), connected: false, lastCloseCode: action.code ?? null, debugLog: addDebug(state, 'WS disconnected') };
     case 'pair_ok':
-      return { ...state, connected: true };
+      return { ...state, connected: true, lastCloseCode: null, debugLog: addDebug(state, 'pair_ok received!') };
 
     case 'hook_activity': {
       const sessions = new Map(state.sessions);
@@ -140,6 +153,8 @@ function formatHookLine(msg: Extract<ServerMessage, { type: 'hook_event' }>): st
 const initialState: State = {
   sessions: new Map(),
   connected: false,
+  debugLog: [],
+  lastCloseCode: null,
 };
 
 export function useWebSocket(url: string | null, pin: string) {
@@ -151,19 +166,23 @@ export function useWebSocket(url: string | null, pin: string) {
     if (!url) return;
     if (wsRef.current) wsRef.current.close();
 
+    dispatch({ type: 'debug', msg: `connecting to ${url}` });
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
     ws.onopen = () => {
       if (wsRef.current !== ws) return;
       dispatch({ type: 'connected' });
+      dispatch({ type: 'debug', msg: `sending pair (pin=${pin})` });
       ws.send(JSON.stringify({ type: 'pair', pin }));
     };
 
     ws.onmessage = (event) => {
       if (wsRef.current !== ws) return;
       try {
-        const msg: ServerMessage = JSON.parse(event.data as string);
+        const raw = event.data as string;
+        const msg: ServerMessage = JSON.parse(raw);
+        dispatch({ type: 'debug', msg: `recv: ${msg.type}` });
         switch (msg.type) {
           case 'output':
             // Currently unused by daemon — ignore
@@ -199,14 +218,16 @@ export function useWebSocket(url: string | null, pin: string) {
       }
     };
 
-    ws.onclose = () => {
+    ws.onclose = (e) => {
       if (wsRef.current !== ws) return;
-      dispatch({ type: 'disconnected' });
+      dispatch({ type: 'debug', msg: `closed code=${e.code} reason=${e.reason || 'none'}` });
+      dispatch({ type: 'disconnected', code: e.code });
       wsRef.current = null;
       reconnectRef.current = setTimeout(connect, RECONNECT_DELAY);
     };
 
-    ws.onerror = () => {
+    ws.onerror = (e: any) => {
+      dispatch({ type: 'debug', msg: `error: ${e?.message || 'unknown'}` });
       ws.close();
     };
   }, [url, pin]);
@@ -251,6 +272,8 @@ export function useWebSocket(url: string | null, pin: string) {
   return {
     sessions: sortedSessions(state.sessions),
     connected: state.connected,
+    debugLog: state.debugLog,
+    lastCloseCode: state.lastCloseCode,
     connect,
     disconnect,
     sendPermissionResponse,

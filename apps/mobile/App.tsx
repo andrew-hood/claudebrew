@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Animated } from 'react-native';
+import { StyleSheet, Animated, BackHandler } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -86,6 +86,19 @@ export default function App() {
     }
   }, [connection.sessions, selectedSessionId]);
 
+  // Android hardware back button
+  useEffect(() => {
+    const handler = () => {
+      if (screen === 'detail') {
+        setSelectedSessionId(null);
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', handler);
+    return () => sub.remove();
+  }, [screen]);
+
   useEffect(() => {
     if (fontsLoaded) SplashScreen.hideAsync();
   }, [fontsLoaded]);
@@ -121,6 +134,7 @@ export default function App() {
               connecting={connection.state === 'connecting'}
               onConnect={connection.connectTo}
               initialIp={connection.ip}
+              error={connection.error}
             />
           )}
         </Animated.View>

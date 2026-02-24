@@ -15,9 +15,10 @@ interface ConnectScreenProps {
   connecting: boolean;
   onConnect: (ip: string, pin: string) => void;
   initialIp?: string;
+  error?: string | null;
 }
 
-export function ConnectScreen({ connecting, onConnect, initialIp }: ConnectScreenProps) {
+export function ConnectScreen({ connecting, onConnect, initialIp, error }: ConnectScreenProps) {
   const [ip, setIp] = useState(initialIp ?? "");
   const [pinDigits, setPinDigits] = useState(["", "", "", ""]);
   const [scanning, setScanning] = useState(false);
@@ -213,6 +214,15 @@ export function ConnectScreen({ connecting, onConnect, initialIp }: ConnectScree
             {connecting ? "Connecting..." : "Connect"}
           </Text>
         </TouchableOpacity>
+
+        {error && !connecting && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+            <Text style={styles.errorHint}>
+              Check that the daemon is running and both devices are on the same WiFi network.
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -341,5 +351,24 @@ const styles = StyleSheet.create({
     fontFamily: typography.dmSans.semibold,
     fontSize: 16,
     color: colors.brewDark,
+  },
+  errorBox: {
+    marginTop: spacing.md,
+    backgroundColor: colors.brewMedium,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: '#6B3A3A',
+    padding: spacing.md,
+  },
+  errorText: {
+    fontFamily: typography.dmSans.semibold,
+    fontSize: 14,
+    color: '#E8A0A0',
+  },
+  errorHint: {
+    fontFamily: typography.dmSans.regular,
+    fontSize: 12,
+    color: colors.cremaDark,
+    marginTop: spacing.xs,
   },
 });

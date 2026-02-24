@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "main": "index.ts",
   "scripts": {
+    "build": "APP_VARIANT=development npx expo prebuild --platform android --clean",
     "start": "expo start",
     "ios": "expo run:ios",
-    "android": "APP_VARIANT=development expo run:android"
+    "android": "expo run:android"
   },
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.0",

@@ -1,4 +1,4 @@
-package com.claudebrew.app
+package com.claudebrew.app.dev
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

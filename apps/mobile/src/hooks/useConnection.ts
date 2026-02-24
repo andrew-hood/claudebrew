@@ -6,6 +6,7 @@ const DEFAULT_PORT = 3033;
 const STORAGE_IP_KEY = 'claudebrew_last_ip';
 const STORAGE_PIN_KEY = 'claudebrew_last_pin';
 const AUTO_CONNECT_TIMEOUT_MS = 8000;
+const MANUAL_CONNECT_TIMEOUT_MS = 15000;
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
 
@@ -13,8 +14,9 @@ export function useConnection() {
   const [ip, setIp] = useState('');
   const [pin, setPin] = useState('');
   const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const isAutoConnectRef = useRef(false);
-  const autoConnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const url = connecting ? `ws://${ip}:${DEFAULT_PORT}` : null;
   const ws = useWebSocket(url, pin);
@@ -24,6 +26,20 @@ export function useConnection() {
     : connecting
       ? 'connecting'
       : 'disconnected';
+
+  const clearTimer = useCallback(() => {
+    if (connectTimerRef.current) {
+      clearTimeout(connectTimerRef.current);
+      connectTimerRef.current = null;
+    }
+  }, []);
+
+  const failConnection = useCallback((message: string) => {
+    clearTimer();
+    isAutoConnectRef.current = false;
+    setConnecting(false);
+    setError(message);
+  }, [clearTimer]);
 
   // Auto-connect on mount from saved credentials
   useEffect(() => {
@@ -41,66 +57,78 @@ export function useConnection() {
     })();
   }, []);
 
-  // Set a timeout to fall back when auto-connecting
+  // Timeout for both auto-connect and manual connect
   useEffect(() => {
-    if (!connecting || !isAutoConnectRef.current) return;
+    if (!connecting) return;
 
-    autoConnectTimerRef.current = setTimeout(() => {
-      isAutoConnectRef.current = false;
-      setConnecting(false);
-    }, AUTO_CONNECT_TIMEOUT_MS);
+    const timeout = isAutoConnectRef.current
+      ? AUTO_CONNECT_TIMEOUT_MS
+      : MANUAL_CONNECT_TIMEOUT_MS;
 
-    return () => {
-      if (autoConnectTimerRef.current) {
-        clearTimeout(autoConnectTimerRef.current);
-        autoConnectTimerRef.current = null;
+    const message = isAutoConnectRef.current
+      ? '' // silent fail for auto-connect
+      : `Could not connect to ${ip}:${DEFAULT_PORT}`;
+
+    connectTimerRef.current = setTimeout(() => {
+      if (isAutoConnectRef.current) {
+        // Auto-connect: silently fall back to connect screen
+        isAutoConnectRef.current = false;
+        setConnecting(false);
+      } else {
+        failConnection(message);
       }
-    };
-  }, [connecting]);
+    }, timeout);
 
-  // Clear the timer on successful pair
+    return clearTimer;
+  }, [connecting, ip, clearTimer, failConnection]);
+
+  // Clear timer + error on successful pair, persist credentials
   useEffect(() => {
     if (!ws.connected) return;
+    clearTimer();
     isAutoConnectRef.current = false;
-    if (autoConnectTimerRef.current) {
-      clearTimeout(autoConnectTimerRef.current);
-      autoConnectTimerRef.current = null;
+    setError(null);
+    AsyncStorage.setItem(STORAGE_IP_KEY, ip);
+    AsyncStorage.setItem(STORAGE_PIN_KEY, pin);
+  }, [ws.connected, clearTimer, ip, pin]);
+
+  // Watch for WS close with rejection code (wrong PIN)
+  useEffect(() => {
+    if (!ws.lastCloseCode || !connecting) return;
+    if (ws.lastCloseCode === 4001) {
+      failConnection('Connection rejected — wrong PIN');
     }
-  }, [ws.connected]);
+  }, [ws.lastCloseCode, connecting, failConnection]);
 
   const connectTo = useCallback(
     (targetIp: string, targetPin: string) => {
-      if (autoConnectTimerRef.current) {
-        clearTimeout(autoConnectTimerRef.current);
-        autoConnectTimerRef.current = null;
-      }
+      clearTimer();
       isAutoConnectRef.current = false;
-      AsyncStorage.setItem(STORAGE_IP_KEY, targetIp);
-      AsyncStorage.setItem(STORAGE_PIN_KEY, targetPin);
+      setError(null);
       setIp(targetIp);
       setPin(targetPin);
       setConnecting(true);
     },
-    [],
+    [clearTimer],
   );
 
   const disconnectFrom = useCallback(() => {
-    if (autoConnectTimerRef.current) {
-      clearTimeout(autoConnectTimerRef.current);
-      autoConnectTimerRef.current = null;
-    }
+    clearTimer();
     isAutoConnectRef.current = false;
     setConnecting(false);
+    setError(null);
     ws.disconnect();
-  }, [ws]);
+  }, [ws, clearTimer]);
 
   return {
     state,
     ip,
     pin,
+    error,
     connectTo,
     disconnect: disconnectFrom,
     sessions: ws.sessions,
     sendPermissionResponse: ws.sendPermissionResponse,
+    debugLog: ws.debugLog,
   };
 }
